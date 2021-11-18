@@ -43,7 +43,7 @@ Tools For Scanning Process Memory For A Certain Pattern In "XX XX ? XX XX ? ? ? 
             -   (note pHeapEntry is of PROCESS_HEAP_ENTRY type, and refers to a specific heap)
          
       PatternScanCurrentProcessHeaps(pszPattern)
-            -   Scans All Heaps For The Current Process For a Patter
+            -   Scans All Heaps For The Current Process For a Pattern
             
 </pre>
 
