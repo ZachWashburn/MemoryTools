@@ -123,8 +123,8 @@ namespace MemoryTools
 				_In_ void* pCallAddress
 		);
 
-		/// <c> WriteNOPs </c> Writes NOP (0x90) 
-		/// <summary> Opcodes to pWriteAddress -> pWriteAddress + nDataSize </summary>
+		/// <c> WriteNOPs </c>
+		/// <summary> Writes NOP (0x90) Opcodes to pWriteAddress -> pWriteAddress + nDataSize </summary>
 		/// <param name="pWriteAddress">  A Pointer To The Address To Place The NOP OpCodes </param>
 		/// <param name="nDataSize"> Amount of Bytes to Overwrite </param>
 		/// <returns> <strong> true if the function succeeds, failure is caused do to a VirtualProtect failure </strong> </return>
