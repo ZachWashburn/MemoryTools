@@ -252,7 +252,7 @@ bool MTCALL MemoryTools::IsMemoryRangeReadable(_In_ void* ptr, _In_ size_t nData
 	return MemoryTools::DoesMemoryHaveAttributes(ptr, nDataSize, MEM_COMMIT, PAGE_READONLY & PAGE_READWRITE & PAGE_EXECUTE_READWRITE, 0xFFFFFFFF, pnReadableAmount);
 }
 
-_Ret_maybenull_ void* MTCALL MemoryTools::RelativeToAbsolute(_In_reads_(1) void** ptr)
+_Ret_maybenull_ void* MTCALL MemoryTools::RelativeToAbsolute(_In_reads_(sizeof(void*)) void** ptr)
 {
 	if (!MemoryTools::IsMemoryRangeReadable(ptr, sizeof(void*)))
 		return nullptr;

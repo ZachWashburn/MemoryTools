@@ -176,7 +176,7 @@ namespace MemoryTools
 		DLLEXPORT
 		_Ret_maybenull_
 		void* MTCALL RelativeToAbsolute(
-			_In_reads_(1) void** ptr
+			_In_reads_(sizeof(void*)) void** ptr
 		);
 
 	EXTERNCCLOSE
