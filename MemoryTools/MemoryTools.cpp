@@ -7,41 +7,42 @@
 #include <Windows.h>
 #include <Psapi.h>
 #include <intsafe.h>
+#include <malloc.h>
+
+#define INRANGE(x,a,b)    (x >= a && x <= b) 
+#define getBits( x )    (INRANGE((x&(~0x20)),'A','F') ? ((x&(~0x20)) - 'A' + 0xa) : (INRANGE(x,'0','9') ? x - '0' : 0))
+#define getByte( x )    (getBits(x[0]) << 4 | getBits(x[1]))
 
 _Ret_maybenull_ void* MTCALL MemoryTools::PatternScanMemoryRegion(_In_reads_bytes_(nRegionSize) void* pBaseAddress, _In_ size_t nRegionSize, _In_ const char* pszPattern)
 {
-	size_t nPatternSize = strlen(pszPattern) - 1;
-	unsigned char* s = reinterpret_cast<unsigned char*>(pBaseAddress);
-	unsigned char* e = s + nRegionSize;
-	unsigned char* pPatternPos = (unsigned char*)pszPattern;
-
-	for (; s < e; s++)
+	const char* pat = pszPattern;
+	BYTE* firstMatch = 0;
+	BYTE* rangeStart = (BYTE*)pBaseAddress;
+	BYTE* rangeEnd = rangeStart + nRegionSize;
+	for (BYTE* pCur = rangeStart; pCur < rangeEnd; pCur++)
 	{
-		if (*pPatternPos == ' ')
-		{
-			s--;
-			pPatternPos++;
-			continue;
-		}
+		if (!*pat)
+			return firstMatch;
 
-		if (*pPatternPos == '?')
+		if (*(PBYTE)pat == '\?' || *(BYTE*)pCur == getByte(pat))
 		{
-			pPatternPos++;
-			continue;
-		}
+			if (!firstMatch)
+				firstMatch = pCur;
 
-		unsigned char byte = (unsigned char)strtoul((const char*)pPatternPos, (char**)&pPatternPos, 16);
+			if (!pat[2])
+				return firstMatch;
 
-		if (byte != *s)
-		{
-			pPatternPos = (unsigned char*)pszPattern;
+			if (*(PWORD)pat == '\?\?' || *(PBYTE)pat != '\?')
+				pat += 3;
+
+			else
+				pat += 2;    //one ?
 		}
 		else
 		{
-			if (pPatternPos >= (unsigned char*)(pszPattern + nPatternSize))
-				return (void*)(s - nPatternSize);
+			pat = pszPattern;
+			firstMatch = 0;
 		}
-
 	}
 
 	return (void*)nullptr;
@@ -50,10 +51,10 @@ _Ret_maybenull_ void* MTCALL MemoryTools::PatternScanMemoryRegion(_In_reads_byte
 _Ret_maybenull_ void* MTCALL MemoryTools::PatternScanModuleHandle(_In_ void* hModule, _In_ const char* pszPattern)
 {
 	MODULEINFO modInfo;
-
+	
 	if (GetModuleInformation(GetCurrentProcess(), (HMODULE)hModule, &modInfo, sizeof(MODULEINFO)))
-		MemoryTools::PatternScanMemoryRegion((void*)modInfo.lpBaseOfDll, modInfo.SizeOfImage, pszPattern);
-
+		return MemoryTools::PatternScanMemoryRegion((void*)modInfo.lpBaseOfDll, modInfo.SizeOfImage, pszPattern);
+	
 	return (void*)nullptr;
 }
 
@@ -94,15 +95,22 @@ _Ret_maybenull_ void* MTCALL MemoryTools::PatternScanHeap(_In_/*PROCESS_HEAP_ENT
 	MEMORY_BASIC_INFORMATION MemInfo;
 	DWORD dwOldProtect = 0;
 	PROCESS_HEAP_ENTRY* pEntry = reinterpret_cast<PROCESS_HEAP_ENTRY*>(pHeapEntry);
-
+	void* pRet = nullptr;
 
 	if (!VirtualQueryEx(GetCurrentProcess(), pEntry, &MemInfo, sizeof(MEMORY_BASIC_INFORMATION)))
 		return (void*)nullptr;
 
-	if (MemInfo.State != MEM_COMMIT || MemInfo.Protect == PAGE_NOACCESS)
+	if (MemInfo.State != MEM_COMMIT )
 		return (void*)nullptr;
 
-	return MemoryTools::PatternScanMemoryRegion((void*)pEntry->lpData, pEntry->cbData, pszPattern);
+	if(!VirtualProtect(pEntry->lpData, pEntry->cbData, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+		return (void*)nullptr;
+
+	pRet = MemoryTools::PatternScanMemoryRegion((void*)pEntry->lpData, pEntry->cbData, pszPattern);
+
+	VirtualProtect((void*)pEntry->lpData, pEntry->cbData, dwOldProtect, &dwOldProtect);
+
+	return pRet;
 }
 
 
@@ -150,6 +158,9 @@ _Ret_maybenull_ void* MTCALL MemoryTools::PatternScanCurrentProcessHeaps(_In_ co
 		entry.lpData = NULL;
 		while (HeapWalk(aHeaps[HeapsIndex], &entry))
 		{
+			//if (!(entry.wFlags & PROCESS_HEAP_REGION))
+			//	continue;
+
 			pAddr = MemoryTools::PatternScanHeap(&entry, pszPattern);
 
 			if (pAddr)
@@ -230,16 +241,15 @@ bool MTCALL MemoryTools::DoesMemoryHaveAttributes(_In_ void* ptr, _In_ size_t nD
 	if (!(mbi.Protect & PageType))
 		return false;
 
-	size_t nBlockOffset = (size_t)((char*)ptr - (char*)mbi.AllocationBase);
-	size_t nBlockBytesPostPtr = mbi.RegionSize - nBlockOffset;
+	size_t nBytesAfterBlockEnd = (size_t)(((char*)ptr + nDataSize) - ((char*)ptr + mbi.RegionSize));
 
-	if (nBlockBytesPostPtr < nDataSize)
+	if (nBytesAfterBlockEnd < nDataSize)
 	{
-		if(pnReadableAmount)
-			*pnReadableAmount += mbi.RegionSize;
+		bool bReturnValue = DoesMemoryHaveAttributes((char*)ptr + nBytesAfterBlockEnd,
+			nBytesAfterBlockEnd, PageState, PageProtect, PageType, pnReadableAmount);
 
-		bool bReturnValue = DoesMemoryHaveAttributes((char*)ptr + nBlockBytesPostPtr,
-			nDataSize - nBlockBytesPostPtr, PageState, PageProtect, PageType, pnReadableAmount);
+		if (bReturnValue && pnReadableAmount)
+			*pnReadableAmount += mbi.RegionSize;
 
 		return bReturnValue;
 	}
@@ -249,7 +259,7 @@ bool MTCALL MemoryTools::DoesMemoryHaveAttributes(_In_ void* ptr, _In_ size_t nD
 
 bool MTCALL MemoryTools::IsMemoryRangeReadable(_In_ void* ptr, _In_ size_t nDataSize, _Inout_opt_ size_t* pnReadableAmount /* = nullptr */)
 {
-	return MemoryTools::DoesMemoryHaveAttributes(ptr, nDataSize, MEM_COMMIT, PAGE_READONLY & PAGE_READWRITE & PAGE_EXECUTE_READWRITE, 0xFFFFFFFF, pnReadableAmount);
+	return MemoryTools::DoesMemoryHaveAttributes(ptr, nDataSize, MEM_COMMIT, PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READWRITE, 0xFFFFFFFF, pnReadableAmount);
 }
 
 _Ret_maybenull_ void* MTCALL MemoryTools::RelativeToAbsolute(_In_reads_(sizeof(void*)) void** ptr)
