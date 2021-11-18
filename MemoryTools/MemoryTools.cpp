@@ -260,5 +260,3 @@ _Ret_maybenull_ void* MTCALL MemoryTools::RelativeToAbsolute(_In_reads_(sizeof(v
 	// Yes the casts are ugly
 	return (void*)((int)((char*)ptr + sizeof(void*)) + *(char**)ptr);
 }
-
-

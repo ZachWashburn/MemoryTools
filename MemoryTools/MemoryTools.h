@@ -11,7 +11,7 @@
 #define EXTERNC extern "C" {
 #define EXTERNCCLOSE };
 #else 
-#define DLLEXPORT /**/
+#define DLLEXPORT 
 #define EXTERNCOPEN /**/
 #define EXTERNCCLOSE /**/
 #endif
@@ -24,12 +24,12 @@ namespace MemoryTools
 	EXTERNCOPEN
 		
 
-		/// <c> PatternScanMemoryRegion </c> 
-		/// <summary> Find a Pattern within <paramref name="pBaseAddress"/> -> <paramref name="pBaseAddress"/> + <paramref name="nRegionSize"/> </summary>
-		/// <param name="pBaseAddress"> Base Address To Scan From </param>
-		/// <param name="nRegionSize"> Amount of bytes to scan from pBaseAddrsss </param>
-		/// <param name="pszPattern"> The String To Scan For in  XX XX ? XX XX  format </param>
-		/// <returns> <strong> Address Pattern Found At Or NULL (no match) </strong> </returns>
+		/// <c>PatternScanMemoryRegion</c> 
+		/// <summary> Find a Pattern within <paramref name="pBaseAddress"/> to <paramref name="pBaseAddress"/> + <paramref name="nRegionSize"/>.</summary>
+		/// <param name="pBaseAddress"> Base Address To Scan From.</param>
+		/// <param name="nRegionSize"> Amount of bytes to scan from pBaseAddress.</param>
+		/// <param name="pszPattern"> The String To Scan For in  XX XX ? XX XX  format.</param>
+		/// <returns>  Address Pattern Found At Or NULL (no match).</returns>
 		DLLEXPORT
 		_Ret_maybenull_
 		void* MTCALL PatternScanMemoryRegion(
@@ -38,11 +38,11 @@ namespace MemoryTools
 			_In_ const char* pszPattern
 		);
 
-		/// <c> PatternScanModule </c> 
-		/// <summary> Finds a Loaded Module, and Scans its Memory For a Pattern </summary> 
-		/// <param name="pszModuleName"> String With Name Of The Module To Scan </param>
-		/// <param name="pszPattern"> The String To Scan For in  XX XX ? XX XX  format </param>
-		/// <returns> <strong> Address Pattern Found At Or NULL (no match / module not found) </strong> </returns>
+		/// <c>PatternScanModule</c> 
+		/// <summary> Finds a Loaded Module, and Scans its Memory For a Pattern.</summary> 
+		/// <param name="pszModuleName"> String With Name Of The Module To Scan.</param>
+		/// <param name="pszPattern"> The String To Scan For in  XX XX ? XX XX  format.</param>
+		/// <returns> <strong> Address Pattern Found At Or NULL (no match / module not found) </strong>.</returns>
 		DLLEXPORT
 		_Ret_maybenull_
 		void* MTCALL PatternScanModule(
@@ -97,12 +97,11 @@ namespace MemoryTools
 			_In_ const char* pszPattern
 		);
 
-
 		/// <c> PlaceJumpRel32x86 </c> 
-		/// <summary> Places a Relative Jump 32bit (0xE9) to pJumpAddress </summary>
-		/// <param name="pWriteAddress"> A Pointer To The Address To Place The Jump </param>
-		/// <param name="pJumpAddress"> A Pointer To The Address The Jump Points To </param>
-		/// <returns> <strong> true if the function succeds, failure is caused do to a VirtualProtect failure </strong> </return>
+		/// <summary> Places a Relative Jump 32bit to pJumpAddress.</summary>
+		/// <param name="pWriteAddress"> A Pointer To The Address To Place The Jump.</param>
+		/// <param name="pJumpAddress"> A Pointer To The Address The Jump Points To.</param>
+		/// <returns> <strong> true if the function succeeds, failure is caused do to a VirtualProtect failure.</strong> </returns>
 		DLLEXPORT
 		_Success_(return != false)
 		bool MTCALL PlaceJumpRel32x86(
@@ -115,7 +114,7 @@ namespace MemoryTools
 		/// <summary> Places a Relative Call 32bit (0xE8) to pJumpAddress </summary>
 		/// <param name="pWriteAddress"> A Pointer To The Address To Place The Call </param>
 		/// <param name="pCallAddress"> A Pointer To The Address The Call Points To </param>
-		/// <returns> <strong> true if the function succeeds, failure is caused do to a VirtualProtect failure </strong> </return>
+		/// <returns> <strong> true if the function succeeds, failure is caused do to a VirtualProtect failure </strong> </returns>
 		DLLEXPORT
 		_Success_(return != false)
 		bool MTCALL PlaceCallRel32x86(
@@ -124,10 +123,10 @@ namespace MemoryTools
 		);
 
 		/// <c> WriteNOPs </c>
-		/// <summary> Writes NOP (0x90) Opcodes to pWriteAddress -> pWriteAddress + nDataSize </summary>
+		/// <summary> Writes NOP (0x90) Opcodes from pWriteAddress to pWriteAddress + nDataSize </summary>
 		/// <param name="pWriteAddress">  A Pointer To The Address To Place The NOP OpCodes </param>
 		/// <param name="nDataSize"> Amount of Bytes to Overwrite </param>
-		/// <returns> <strong> true if the function succeeds, failure is caused do to a VirtualProtect failure </strong> </return>
+		/// <returns> <strong> true if the function succeeds, failure is caused do to a VirtualProtect failure </strong> </returns>
 		DLLEXPORT
 		_Success_(return != false)
 		bool MTCALL WriteNOPs(
@@ -144,7 +143,7 @@ namespace MemoryTools
 		/// <param name="PageProtect"> The Page Protection To Check For (i.e.) PAGE_EXECUTE, Pass 0xFFFFFFF if it doesn't matter </param>
 		/// <param name="PageType"> The Page Type To Check For (i.e.) MEM_IMAGE, Pass 0xFFFFFFF if it doesn't matter </param>
 		/// <param name="pnMatchableAmount"> An Optional Pointer that returns how many bytes met these requirements </param>
-		/// <returns> <strong> True if all bytes checked meet the requirements passed </strong> </return>
+		/// <returns> <strong> True if all bytes checked meet the requirements passed </strong> </returns>
 		DLLEXPORT
 		bool MTCALL DoesMemoryHaveAttributes(
 			_In_ void* ptr,
@@ -161,7 +160,7 @@ namespace MemoryTools
 		/// <param name="ptr"> A Pointer To Start Memory Address </param>
 		/// <param name="nDataSize"> Amount Of Bytes to Check </param>
 		/// <param name="pnReadableAmount"> An Optional Pointer that returns how many bytes were readable </param>
-		/// <returns> <strong> True if all bytes checked were readable </strong> </return>
+		/// <returns> <strong> True if all bytes checked were readable </strong> </returns>
 		DLLEXPORT
 		bool MTCALL IsMemoryRangeReadable(
 			_In_ void* ptr,
@@ -172,7 +171,7 @@ namespace MemoryTools
 		/// <c> RelativeToAbsolute </c> 
 		/// <summary> Converts a Relative Address In Memory To An Absolute One </summary>
 		/// <param name="ptr"> A Pointer To The Address Location In Memory </param>
-		/// <returns> <strong> Absolute Value Of Address, NULL if Memory Is Not Readable </strong> </return>
+		/// <returns> <strong> Absolute Value Of Address, NULL if Memory Is Not Readable </strong> </returns>
 		DLLEXPORT
 		_Ret_maybenull_
 		void* MTCALL RelativeToAbsolute(
