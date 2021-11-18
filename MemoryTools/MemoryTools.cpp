@@ -11,10 +11,10 @@
 _Ret_maybenull_ void* MTCALL MemoryTools::PatternScanMemoryRegion(_In_reads_bytes_(nRegionSize) void* pBaseAddress, _In_ size_t nRegionSize, _In_ const char* pszPattern)
 {
 	size_t nPatternSize = strlen(pszPattern) - 1;
-
 	unsigned char* s = reinterpret_cast<unsigned char*>(pBaseAddress);
 	unsigned char* e = s + nRegionSize;
 	unsigned char* pPatternPos = (unsigned char*)pszPattern;
+
 	for (; s < e; s++)
 	{
 		if (*pPatternPos == ' ')
@@ -249,6 +249,6 @@ bool MTCALL MemoryTools::DoesMemoryHaveAttributes(_In_ void* ptr, _In_ size_t nD
 
 bool MTCALL MemoryTools::IsMemoryRangeReadable(_In_ void* ptr, _In_ size_t nDataSize, _Inout_opt_ size_t* pnReadableAmount /* = nullptr */)
 {
-	return MemoryTools::DoesMemoryHaveAttributes(ptr, nDataSize, 0xFFFFFFFF, PAGE_READONLY & PAGE_READWRITE & PAGE_EXECUTE_READWRITE, 0xFFFFFFFF, pnReadableAmount);
+	return MemoryTools::DoesMemoryHaveAttributes(ptr, nDataSize, MEM_COMMIT, PAGE_READONLY & PAGE_READWRITE & PAGE_EXECUTE_READWRITE, 0xFFFFFFFF, pnReadableAmount);
 }
 

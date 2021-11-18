@@ -114,13 +114,13 @@ namespace MemoryTools
 		/// <c> PlaceCallRel32x86 </c> 
 		/// <summary> Places a Relative Call 32bit (0xE8) to pJumpAddress </summary>
 		/// <param name="pWriteAddress"> A Pointer To The Address To Place The Call </param>
-		/// <param name="pJumpAddress"> A Pointer To The Address The Call Points To </param>
+		/// <param name="pCallAddress"> A Pointer To The Address The Call Points To </param>
 		/// <returns> <strong> true if the function succeeds, failure is caused do to a VirtualProtect failure </strong> </return>
 		DLLEXPORT
 		_Success_(return != false)
 		bool MTCALL PlaceCallRel32x86(
 				_Out_writes_bytes_all_(5) void* pWriteAddress,
-				_In_ void* pJumpAddress
+				_In_ void* pCallAddress
 		);
 
 		/// <c> WriteNOPs </c> Writes NOP (0x90) 
