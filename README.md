@@ -35,14 +35,14 @@ Tools For Scanning Process Memory For A Certain Pattern In "XX XX ? XX XX ? ? ? 
      PatternScanModuleHandle(hModule, pszPattern)
             -   Takes a Module Handle, Scans the Modules Memory For a Pattern 
             
-      PatternScanCurrentProcess(pszPattern)
+     PatternScanCurrentProcess(pszPattern)
             -   Scans All Process Modules For a Pattern
         
-      PatternScanHeap(pHeapEntry, pszPattern)
+     PatternScanHeap(pHeapEntry, pszPattern)
             -   Scans a Specific Heap For A Pattern 
             -   (note pHeapEntry is of PROCESS_HEAP_ENTRY type, and refers to a specific heap)
          
-      PatternScanCurrentProcessHeaps(pszPattern)
+     PatternScanCurrentProcessHeaps(pszPattern)
             -   Scans All Heaps For The Current Process For a Pattern
             
 </pre>
