@@ -73,7 +73,7 @@ Tools for finding information about a specified memory region
             -  Certain Page Attributes (State, Protection, Type). The Optional Value pnMatchableAmount Will 
             -  Return The Amount Of Bytes That Match The Attributes (if not all do, this also returns false)
             
-      IsMemoryRangeReadable(ptr, nDataSize, pnReadableAmount (optional))
+     IsMemoryRangeReadable(ptr, nDataSize, pnReadableAmount (optional))
             -  Checks To See If We Are Able to Read From a Certain Memory Range
             -  pnReadableAmount Will Return The Max Readable Bytes If Passed
 </pre>
