@@ -169,6 +169,15 @@ namespace MemoryTools
 			_Inout_opt_ size_t* pnReadableAmount = nullptr
 		);
 
+		/// <c> RelativeToAbsolute </c> 
+		/// <summary> Converts a Relative Address In Memory To An Absolute One </summary>
+		/// <param name="ptr"> A Pointer To The Address Location In Memory </param>
+		/// <returns> <strong> Absolute Value Of Address, NULL if Memory Is Not Readable </strong> </return>
+		DLLEXPORT
+		_Ret_maybenull_
+		void* MTCALL RelativeToAbsolute(
+			_In_reads_(1) void** ptr
+		);
 
 	EXTERNCCLOSE
 }	
