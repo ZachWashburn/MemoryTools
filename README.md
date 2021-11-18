@@ -77,3 +77,14 @@ Tools for finding information about a specified memory region
             -  Checks To See If We Are Able to Read From a Certain Memory Range
             -  pnReadableAmount Will Return The Max Readable Bytes If Passed
 </pre>
+
+## Helper Functions
+
+Simple Helper Functions
+
+<pre>
+     RelativeToAbsolute(ptr)
+            -  Converts A Relative Address To Absolute (returns NULL if memory location is not readable)
+</pre>
+
+
