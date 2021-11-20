@@ -120,19 +120,30 @@
 <param name="ptr"> A Pointer To The Address Location In Memory </param>
 <returns> <strong> Absolute Value Of Address, NULL if Memory Is Not Readable </strong> </returns>
 </member>
-<member name="M:MemoryTools.GetPatternReversed(System.SByte!System.Runtime.CompilerServices.IsSignUnspecifiedByte!System.Runtime.CompilerServices.IsConst*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="241">
+<member name="M:MemoryTools.GetThreadTEB(System.Void*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="238">
+<c> GetThreadTEB </c> 
+<summary> Gets The TEB For A Running Thread </summary>
+<param name="hThread"> The HANDLE to the thread </param>
+<returns> <strong> Returns NULL Due to Error, otherwise the TEB </strong> </returns>
+</member>
+<member name="M:MemoryTools.GetCurrentTEB" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="247">
+<c> GetCurrentTEB </c> 
+<summary> Gets The TEB For The Current Thread </summary>
+<returns> <strong> Returns NULL Due to Error, otherwise the TEB </strong> </returns>
+</member>
+<member name="M:MemoryTools.GetPatternReversed(System.SByte!System.Runtime.CompilerServices.IsSignUnspecifiedByte!System.Runtime.CompilerServices.IsConst*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="252">
 <c> GetPatternReversed </c> 
 <summary> Reverses a Code Pattern or any string less than 8192 </summary>
 <param name="szPattern"> A Pointer To The String </param>
 <returns> <strong> Returns a allocated new string, must free using MTFree </strong> </returns>
 </member>
-<member name="M:MemoryTools.MTFree(System.Void*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="250">
+<member name="M:MemoryTools.MTFree(System.Void*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="261">
 <c> MTFree </c> 
 <summary> Frees memory, use incase of custom allocator </summary>
 <param name="ptr"> A Pointer To The Allocated String </param>
 <returns> <strong> void (no return) </strong> </returns>
 </member>
-<member name="M:MemoryToolsEx.PatternScanMemoryRegionEx(System.Void*,System.Void*,System.UInt32,System.SByte!System.Runtime.CompilerServices.IsSignUnspecifiedByte!System.Runtime.CompilerServices.IsConst*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="268">
+<member name="M:MemoryToolsEx.PatternScanMemoryRegionEx(System.Void*,System.Void*,System.UInt32,System.SByte!System.Runtime.CompilerServices.IsSignUnspecifiedByte!System.Runtime.CompilerServices.IsConst*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="279">
 <c>PatternScanMemoryRegionEx</c> 
 <summary> Find a Pattern within pBaseAddress to pBaseAddress + nRegionSize. Of An External Process </summary>
 <param name="hProcess"> A (HANDLE) to the Process of Which We Are Scanning </param>

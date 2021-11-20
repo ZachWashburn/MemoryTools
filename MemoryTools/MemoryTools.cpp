@@ -379,6 +379,31 @@ _Ret_maybenull_ void* MTCALL MemoryTools::RelativeToAbsolute(_In_reads_(sizeof(v
 	return (void*)((int)((char*)ptr + sizeof(void*)) + *(char**)ptr);
 }
 
+_Ret_maybenull_ void* MTCALL MemoryTools::GetThreadTEB(_In_ void* hThread)
+{
+	THREAD_BASIC_INFORMATION tbiInfo;
+	if (NtQueryInformationThread(hThread, (THREADINFOCLASS)NULL/*ThreadBasicInformation*/, &tbiInfo, sizeof(THREAD_BASIC_INFORMATION), NULL) != S_OK)
+		return nullptr;
+
+	return tbiInfo.TebBaseAddress;
+}
+
+void* MTCALL MemoryTools::GetCurrentTEB()
+{
+#ifdef _WIN64
+	return (void*)__readgsqword(FIELD_OFFSET(NT_TIB, Self));
+#else
+	void* ppTIB = 0;
+	_asm {
+		mov eax, gs: [00]
+		mov ppTIB, eax
+	}
+	return ppTIB;
+#endif
+}
+
+
+
 _Ret_maybenull_
 _Null_terminated_
 _Must_inspect_result_
@@ -421,7 +446,7 @@ void MTCALL MemoryTools::MTFree(_In_opt_ void* ptr)
 
 void MTCALL MemoryTools::CreateNewStackx86(_In_ size_t nMinStackSize, _In_opt_ bool bExecutable, _In_opt_ MemoryTools::StackStore_t* pStackStore)
 {
-
+#ifndef _WIN64
 	NT_TIB* pTIB;
 	DWORD dwOldProtect;
 	size_t nNewStackSize;
@@ -490,6 +515,7 @@ void MTCALL MemoryTools::CreateNewStackx86(_In_ size_t nMinStackSize, _In_opt_ b
 		push ebx
 		ret
 	}
+#endif
 }
 
 void MTCALL MemoryTools::RestoreStackx86(_In_ MemoryTools::StackStore_t* pStackStore)

@@ -235,8 +235,19 @@ namespace MemoryTools
 			_In_reads_(sizeof(void*)) void** ptr
 		);
 
+		/// <c> GetThreadTEB </c> 
+		/// <summary> Gets The TEB For A Running Thread </summary>
+		/// <param name="hThread"> The HANDLE to the thread </param>
+		/// <returns> <strong> Returns NULL Due to Error, otherwise the TEB </strong> </returns>
+		DLLEXPORT _Ret_maybenull_ void* MTCALL GetThreadTEB
+		(
+			_In_ void* hThread
+		);
 
-
+		/// <c> GetCurrentTEB </c> 
+		/// <summary> Gets The TEB For The Current Thread </summary>
+		/// <returns> <strong> Returns NULL Due to Error, otherwise the TEB </strong> </returns>
+		DLLEXPORT void* MTCALL GetCurrentTEB();
 
 		/// <c> GetPatternReversed </c> 
 		/// <summary> Reverses a Code Pattern or any string less than 8192 </summary>
