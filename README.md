@@ -29,6 +29,10 @@ Tools For Scanning Process Memory For A Certain Pattern In "XX XX ? XX XX ? ? ? 
      PatternScanMemoryRegion(pBaseAddress, nRegionSize, pszPattern)
             -  Find a Pattern within the region specified by pBaseAddress of region size nRegionSize 
             
+     PatternScanMemoryRegionReverse(pBaseAddress, nRegionSize, pszPattern)
+            -  Finds A Pattern Within A Region, but scans from highest address
+            -  to lowest address. Pattern Is Automatically Reversed
+            
      PatternScanModule(pszModuleName, pszPattern)
             -  Finds a Loaded Module, and Scans its Memory For a Pattern
              
@@ -44,6 +48,15 @@ Tools For Scanning Process Memory For A Certain Pattern In "XX XX ? XX XX ? ? ? 
          
      PatternScanCurrentProcessHeaps(pszPattern)
             -   Scans All Heaps For The Current Process For a Pattern
+            
+     PatternScanStack(void* pThreadHandle, const char* pszPattern)
+            -   Scans Stack For Thread Specified by pTheadHandle for a Pattern
+            -   (Top -> Bottom Scan)
+            
+     PatternScanCurrentStack(const char* pszPattern)
+            -   Scans Current Thread Stack for a Pattern
+            -   (Top -> Bottom Scan)    
+           
             
 </pre>
 
@@ -78,6 +91,22 @@ Tools for finding information about a specified memory region
             -  pnReadableAmount Will Return The Max Readable Bytes If Passed
 </pre>
 
+## Misc Functions
+Miscellaneous Functions 
+
+<pre>
+     CreateNewStackx86(nMinStackSize, bExecutable, pStackStore (optional))
+            -  Create A New Stack For The Current Thread
+            -  pStackStore Can Be Passed To Store The Current Stack To Restore later
+            -  Remember The Stack Is Different, I Recommend Using A thread_local Var
+            -  For pStackStore (Or Static/Global If Not Using Multiple Threads)
+      
+     RestoreStackx86(pStackStore)
+            -  Restores The Stack To A Previous Stack
+            -  Usually You'll Still Have To Do Some Cleanup On Your End
+
+</pre>
+
 ## Helper Functions
 
 Simple Helper Functions
@@ -85,6 +114,13 @@ Simple Helper Functions
 <pre>
      RelativeToAbsolute(ptr)
             -  Converts A Relative Address To Absolute (returns NULL if memory location is not readable)
+            
+     GetPatternReversed(szPattern)
+            -  Reverses a Pattern (or any string)
+            -  Return is allocate, call MTFree(ret) to free
+            
+      MTFree(ptr)
+            - Frees Memory Allocated By MemoryTools
 </pre>
 
 
