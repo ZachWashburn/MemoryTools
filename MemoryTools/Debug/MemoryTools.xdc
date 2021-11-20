@@ -124,13 +124,22 @@
 <c> GetPatternReversed </c> 
 <summary> Reverses a Code Pattern or any string less than 8192 </summary>
 <param name="szPattern"> A Pointer To The String </param>
-<returns> <strong> Returns a allocated new string must free use MTFree </strong> </returns>
+<returns> <strong> Returns a allocated new string, must free using MTFree </strong> </returns>
 </member>
 <member name="M:MemoryTools.MTFree(System.Void*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="250">
 <c> MTFree </c> 
 <summary> Frees memory, use incase of custom allocator </summary>
 <param name="ptr"> A Pointer To The Allocated String </param>
 <returns> <strong> void (no return) </strong> </returns>
+</member>
+<member name="M:MemoryToolsEx.PatternScanMemoryRegionEx(System.Void*,System.Void*,System.UInt32,System.SByte!System.Runtime.CompilerServices.IsSignUnspecifiedByte!System.Runtime.CompilerServices.IsConst*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="268">
+<c>PatternScanMemoryRegionEx</c> 
+<summary> Find a Pattern within pBaseAddress to pBaseAddress + nRegionSize. Of An External Process </summary>
+<param name="hProcess"> A (HANDLE) to the Process of Which We Are Scanning </param>
+<param name="pBaseAddress"> Base Address To Scan From.</param>
+<param name="nRegionSize"> Amount of bytes to scan from pBaseAddress.</param>
+<param name="pszPattern"> The String To Scan For.</param>
+<returns>  Address Pattern Found At Or NULL (no match).</returns>
 </member>
 </members>
 </doc>

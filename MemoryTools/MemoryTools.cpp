@@ -284,7 +284,7 @@ _Success_(return != false) bool MTCALL MemoryTools::PlaceJumpRel32x86(_Out_write
 	memset(pWriteAddress, 0x90, 5);
 	pRelativeDifference = (char*)(((char*)pJumpAddress - (char*)pWriteAddress) - 5);
 	*(unsigned char*)(pWriteAddress) = 0xE9;
-	*(void**)((char*)pWriteAddress + sizeof(unsigned char*)) = pRelativeDifference;
+	*(void**)((char*)pWriteAddress + sizeof(unsigned char)) = pRelativeDifference;
 
 	if (!VirtualProtect(pWriteAddress, 5, dwOldProtect, &dwOldProtect))
 		return false;
@@ -306,7 +306,7 @@ _Success_(return != false) bool MTCALL MemoryTools::PlaceCallRel32x86(_Out_write
 	memset(pWriteAddress, 0x90, 5);
 	pRelativeDifference = (char*)(((char*)pJumpAddress - (char*)pWriteAddress) - 5);
 	*(unsigned char*)(pWriteAddress) = 0xE8;
-	*(void**)((char*)pWriteAddress + sizeof(unsigned char*)) = pRelativeDifference;
+	*(void**)((char*)pWriteAddress + sizeof(unsigned char)) = pRelativeDifference;
 
 
 	if (!VirtualProtect(pWriteAddress, 5, dwOldProtect, &dwOldProtect))

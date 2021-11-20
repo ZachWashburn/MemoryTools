@@ -241,7 +241,7 @@ namespace MemoryTools
 		/// <c> GetPatternReversed </c> 
 		/// <summary> Reverses a Code Pattern or any string less than 8192 </summary>
 		/// <param name="szPattern"> A Pointer To The String </param>
-		/// <returns> <strong> Returns a allocated new string must free use MTFree </strong> </returns>
+		/// <returns> <strong> Returns a allocated new string, must free using MTFree </strong> </returns>
 		DLLEXPORT _Ret_maybenull_ _Null_terminated_ _Must_inspect_result_ char* MTCALL GetPatternReversed
 		(
 			_In_opt_z_ const char* szPattern
@@ -263,7 +263,24 @@ namespace MemoryTools
 }
 
 namespace MemoryToolsEx {
+	EXTERNCOPEN
 
+		/// <c>PatternScanMemoryRegionEx</c> 
+		/// <summary> Find a Pattern within pBaseAddress to pBaseAddress + nRegionSize. Of An External Process </summary>
+		/// <param name="hProcess"> A (HANDLE) to the Process of Which We Are Scanning </param>
+		/// <param name="pBaseAddress"> Base Address To Scan From.</param>
+		/// <param name="nRegionSize"> Amount of bytes to scan from pBaseAddress.</param>
+		/// <param name="pszPattern"> The String To Scan For.</param>
+		/// <returns>  Address Pattern Found At Or NULL (no match).</returns>
+		DLLEXPORT _Ret_maybenull_ void* MTCALL PatternScanMemoryRegionEx
+		(
+			_In_ void* hProcess,
+			_In_reads_bytes_(nRegionSize) void* pBaseAddress,
+			_In_ size_t nRegionSize,
+			_In_z_ const char* pszPattern
+		);
+
+	EXTERNCCLOSE
 }
 
 #undef DLLEXPORT

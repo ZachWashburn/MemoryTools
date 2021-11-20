@@ -1,3 +1,5 @@
 ﻿  MemoryTools.cpp
+  MemoryToolsEx.cpp
+  Generating Code...
 C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.cpp(488): warning C4731: 'CreateNewStackx86': frame pointer register 'ebp' modified by inline assembly code
   MemoryTools.vcxproj -> C:\Users\user\source\repos\MemoryTools\Debug\MemoryTools.lib
