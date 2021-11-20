@@ -115,7 +115,7 @@ Miscellaneous Functions
      GetThreadTEB(hThread)
             -  Returns The Thread Execution Block of the Thread Specified By hThread
             
-      GetCurrentTEB()
+     GetCurrentTEB()
             -  Returns The TEB of the Current Thread
 
 </pre>
@@ -132,7 +132,7 @@ Simple Helper Functions
             -  Reverses a Pattern (or any string)
             -  Return is allocate, call MTFree(ret) to free
             
-      MTFree(ptr)
+     MTFree(ptr)
             - Frees Memory Allocated By MemoryTools
 </pre>
 
