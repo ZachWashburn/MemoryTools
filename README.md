@@ -26,6 +26,8 @@ Tools For Scanning Process Memory For A Certain Pattern In "XX XX ? XX XX ? ? ? 
 
 
 <pre>
+  MemoryTools::
+     
      PatternScanMemoryRegion(pBaseAddress, nRegionSize, pszPattern)
             -  Find a Pattern within the region specified by pBaseAddress of region size nRegionSize 
             
@@ -55,8 +57,13 @@ Tools For Scanning Process Memory For A Certain Pattern In "XX XX ? XX XX ? ? ? 
             
      PatternScanCurrentStack(const char* pszPattern)
             -   Scans Current Thread Stack for a Pattern
-            -   (Top -> Bottom Scan)    
-           
+            -   (Top -> Bottom Scan) 
+            
+  MemoryToolsEx::
+  
+     PatternScanMemoryRegionEx(hProcess, pBaseAddress, nRegionSize, pszPattern)
+            -  Same As PatternScanMemoryRegion, but scans the process specified by
+            -  hProcess instead of the local process
             
 </pre>
 
@@ -104,6 +111,12 @@ Miscellaneous Functions
      RestoreStackx86(pStackStore)
             -  Restores The Stack To A Previous Stack
             -  Usually You'll Still Have To Do Some Cleanup On Your End
+            
+     GetThreadTEB(hThread)
+            -  Returns The Thread Execution Block of the Thread Specified By hThread
+            
+     GetCurrentTEB()
+            -  Returns The TEB of the Current Thread
 
 </pre>
 
@@ -119,7 +132,7 @@ Simple Helper Functions
             -  Reverses a Pattern (or any string)
             -  Return is allocate, call MTFree(ret) to free
             
-      MTFree(ptr)
+     MTFree(ptr)
             - Frees Memory Allocated By MemoryTools
 </pre>
 
