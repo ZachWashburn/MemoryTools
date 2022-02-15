@@ -10,6 +10,14 @@
 #include <malloc.h>
 #include <winternl.h>
 #include <intrin.h>
+#include <list>
+
+#include "ThirdParty/hde/hde32.h"
+#include "ThirdParty/hde/hde64.h"
+
+#ifdef THROWEXCEPTION
+#include <exception>
+#endif
 
 typedef struct _THREAD_BASIC_INFORMATION
 {
@@ -521,4 +529,329 @@ void MTCALL MemoryTools::CreateNewStackx86(_In_ size_t nMinStackSize, _In_opt_ b
 void MTCALL MemoryTools::RestoreStackx86(_In_ MemoryTools::StackStore_t* pStackStore)
 {
 
+}
+
+struct mapped_dll_info_t
+{
+	void* m_pModuleBase = nullptr;
+	void* m_pLibraryLoader = nullptr;
+	void* m_pProcFinder = nullptr;
+	void* m_pRtlAddFunctionTable = nullptr;
+	void* m_pEntryPoint = nullptr;
+
+	bool m_bSEHSupport = true;
+	bool m_bVEHSupport = false;
+	bool m_b64Bit = false;
+
+	bool m_bFailure = false;
+};
+
+_Ret_maybenull_ void* MTCALL MapDLLToProcess(
+	_In_reads_bytes_(nFileSize) void* pPEFile,
+	_In_ size_t nFileSize,
+	_In_ HANDLE hProcess,
+	_In_ bool bTLSCallBacks,
+	_In_ bool bMapRequiredWithLoadLibrary,
+	_In_ bool bEnableSEH,
+	_In_ bool bEnableVEH)
+{
+
+	IMAGE_DOS_HEADER* pDOS = nullptr;
+	IMAGE_FILE_HEADER* pFile = nullptr;
+	IMAGE_OPTIONAL_HEADER* pOpt = nullptr;
+	IMAGE_NT_HEADERS* pNT = nullptr;
+	mapped_dll_info_t MapDLLInfo;
+	mapped_dll_info_t* pMappedMapDLLInfo;
+
+	pDOS = reinterpret_cast<PIMAGE_DOS_HEADER>(pPEFile);
+
+	if (pDOS->e_magic != 0x5A4D) // MZ !?
+		return nullptr;
+
+	pNT = reinterpret_cast<PIMAGE_NT_HEADERS>(pDOS->e_lfanew + (char*)pPEFile);
+	pOpt = &pNT->OptionalHeader;
+	pFile = &pNT->FileHeader;
+
+
+	LPVOID pMapBase = VirtualAllocEx(hProcess, NULL, pOpt->SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+
+	if (!pMapBase)
+		return nullptr;
+
+	MapDLLInfo.m_pModuleBase = pMapBase;
+
+	if (bEnableSEH)
+	{
+#ifdef _WIN64
+		MapDLLInfo.m_b64Bit = true;
+		MapDLLInfo.m_pRtlAddFunctionTable = &RtlAddFunctionTable;
+#else
+		MapDLLInfo.m_pRtlAddFunctionTable = MemoryTools::PatternScanModule("ntdll.dll", "53 56 57 8D 45 F8 8B FA");
+
+		if (!MapDLLInfo.m_pRtlAddFunctionTable)
+		{
+#ifdef THROWEXCEPTION
+			throw std::exception("Couldn't Scan RtlInsertInvertedFunctionTable From ntdll!");
+#else
+			return nullptr;
+#endif // THROWEXCEPTION
+		}
+#endif // _WIN64
+	}
+
+	if (bMapRequiredWithLoadLibrary)
+	{
+		MapDLLInfo.m_pLibraryLoader = &LoadLibraryA;
+		MapDLLInfo.m_pProcFinder = &GetProcAddress;
+	}
+}
+
+
+void __stdcall MapperShellCode(mapped_dll_info_t* pData)
+{
+
+}
+
+struct _function_hook_t
+{
+	void* m_pTrampoline = nullptr;
+	void* m_pHook = nullptr;
+	void* m_pAddress = nullptr;
+	bool m_bActive = false;
+};
+
+class HookContainer
+{
+public:
+
+	void AddHookEntry(_function_hook_t hk)
+	{
+		m_Hooks.push_back(hk);
+	}
+
+	void RemoveHookEntry(void* pFunctionAddress)
+	{
+		std::list<_function_hook_t>::iterator itr = m_Hooks.begin();
+		std::list<_function_hook_t>::iterator found_itr = m_Hooks.end();
+		for (; itr != m_Hooks.end(); itr++)
+		{
+			if (itr->m_pAddress == pFunctionAddress)
+				break;
+		}
+
+		if (itr != m_Hooks.end())
+			m_Hooks.erase(itr);
+	}
+
+private:
+	std::list<_function_hook_t> m_Hooks;
+};
+
+HookContainer g_Hooks;
+
+_Success_(return != false) bool HookFunctionx86(_In_ void* pFunction, _In_ void* pHook, _Outptr_ void** ppOriginal)
+{
+
+
+	hde32s disasm;
+	int nBytes = 0;
+	_function_hook_t hkinfo;
+	DWORD flOldProtect;
+
+	// Calculate how many bytes need to be moved from the front of the function
+	for (nBytes; nBytes < 5;)
+	{
+		nBytes += hde32_disasm((char*)pFunction + nBytes, &disasm);
+	}
+
+	hkinfo.m_pHook = MemoryTools::GenerateIntermediaryFunctionx86(pHook);
+	
+	// nBytes + 5 (jmp to func)
+	LPVOID pTrampolineFunc = VirtualAlloc(nullptr, nBytes + 5, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+	
+	VirtualProtect(pFunction, nBytes, PAGE_EXECUTE_READWRITE, &flOldProtect);
+
+	if (!pTrampolineFunc)
+		return false;
+
+	// Create Trampoline Function
+	memcpy(pTrampolineFunc, pFunction, nBytes);
+	*(char**)&pTrampolineFunc += nBytes;
+	*(unsigned char*)pTrampolineFunc = 0xE9;
+	*(char**)&pTrampolineFunc += 1;
+	**(char***)pTrampolineFunc = (char*)pFunction + nBytes;
+
+	memset(pFunction, 0x90, nBytes);
+	
+	*(unsigned char*)pFunction = 0xE9;
+	*(char**)((char*)pFunction + 1) = (char*)hkinfo.m_pHook;
+
+	*ppOriginal = pTrampolineFunc;
+
+	hkinfo.m_bActive = true;
+	hkinfo.m_pAddress = pFunction;
+	hkinfo.m_pTrampoline = pTrampolineFunc;
+
+	g_Hooks.AddHookEntry(hkinfo);
+
+	return true;
+}
+
+_Ret_maybenull_ void* MemoryTools::GenerateIntermediaryFunctionx86(
+	_In_ void* pFunc
+)
+{
+	unsigned char* Memory = (unsigned char*)VirtualAlloc(NULL, (sizeof(unsigned char) * 3) + sizeof(uintptr_t*), MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+
+	if (!Memory)
+		return nullptr;
+
+	Memory[0] = 0xFF;
+	Memory[1] = 0x25;
+	*(uintptr_t**)((unsigned char*)Memory + (sizeof(unsigned char) * 2)) = (uintptr_t*)((unsigned char*)Memory + 3 + (sizeof(uintptr_t*)));
+	*((unsigned char*)Memory + (sizeof(unsigned char) * 2) + sizeof(uintptr_t*)) = 0xCB;
+	*(uintptr_t*)((unsigned char*)Memory + (sizeof(unsigned char) * 3) + (sizeof(uintptr_t*))) = (uintptr_t)pFunc;
+	return Memory;
+}
+
+
+_Ret_maybenull_ void* MemoryTools::FindFunctionPrologueFromReturnAddressx86(
+	_In_ void* pReturnAddress,
+	_In_opt_ int nMaxNumberOfBytes /* = 0*/
+)
+{
+	if (!pReturnAddress)
+		return 0;
+
+	if (!nMaxNumberOfBytes)
+		nMaxNumberOfBytes = INT_MAX; // Works Well Enough
+
+	unsigned char* pAddr = (unsigned char*)pReturnAddress;
+	for (int i = 0; i < nMaxNumberOfBytes; i++, pAddr--)
+	{
+		if (i == (nMaxNumberOfBytes - 1))
+			return nullptr;
+
+		if (*pAddr == (unsigned char)0xCC)
+			break;	
+	}
+
+	pAddr++;
+
+	if (*pAddr != 0x55)
+		return nullptr;
+
+	return pAddr;
+}
+
+#include <sstream>
+#include <iomanip>
+
+size_t MemoryTools::CalculateVmtLength(_In_ void* vmt) 
+{
+	size_t length = 0;
+	MEMORY_BASIC_INFORMATION memoryInfo;
+	while (VirtualQuery(LPCVOID(((uintptr_t*)vmt)[length]), &memoryInfo, sizeof(memoryInfo)) && memoryInfo.Protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
+		++length;
+	return length;
+}
+
+std::string hexStr(BYTE* data, int len)
+{
+	std::stringstream ss;
+	ss << std::hex;
+
+	for (int i(0); i < len; ++i)
+	{
+		ss << std::setw(2) << std::setfill('0') << (int)data[i];
+		ss << " ";
+	}
+
+	return ss.str();
+}
+
+std::string GetHexCharacter(uint8_t Value)
+{
+	std::ostringstream ss;
+	ss << std::hex << std::setw(2) << std::setfill('0');
+	ss << std::uppercase;
+	ss << static_cast<int>(Value);
+	return ss.str();
+}
+
+
+void MemoryTools::BuildSignaturex86(_Outptr_ void* pStrObject, _In_reads_(len) unsigned char* data, _In_ unsigned int len)
+{
+	std::string* pOutput = reinterpret_cast<std::string*>(pStrObject);
+	std::ostringstream sig;
+	sig << std::uppercase;
+	unsigned int nBytesDisassembled = 0;
+
+	while (nBytesDisassembled < len)
+	{
+		hde32s disasm;
+		uint8_t* pPos = (uint8_t*)((char*)data + nBytesDisassembled);
+		nBytesDisassembled += hde32_disasm(pPos, &disasm);
+
+		sig << GetHexCharacter(disasm.opcode) << " ";
+		int nRead = 1;
+
+		if (disasm.len == 1)
+			continue;
+
+		if (disasm.opcode2)
+		{
+			sig << GetHexCharacter(disasm.opcode2) << " ";
+			nRead++;
+			if (disasm.len == 2)
+				continue;
+		}
+
+		if (disasm.imm.imm32 && disasm.len >= 5)
+		{
+			for (int i = 0; i < (disasm.len - nRead); i++)
+				sig << "??" << " ";
+		}
+		else
+		{
+			pPos += nRead;
+			for (int i = 0; i < (disasm.len - nRead); i++, pPos++)
+				sig << GetHexCharacter(*pPos) << " ";
+		}
+
+	}
+
+	*pOutput = sig.str();
+}
+
+void MemoryTools::CreateVTableSigsx86(_In_ void* class_definition, _In_ int& nVtablesCount, _In_opt_ void* strArray)
+{
+	nVtablesCount = MemoryTools::CalculateVmtLength((void*)*(uintptr_t*)class_definition);
+
+	if (!nVtablesCount)
+		return;
+
+	if (!strArray)
+		return; // Let them Know the VMT Lengtg
+
+	HMODULE hHandle;
+	for (int i = 0; i < nVtablesCount; i++)
+	{
+		unsigned char* pFunc = (*reinterpret_cast<unsigned char***>(class_definition))[i];
+
+		if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)pFunc, &hHandle))
+			continue;
+
+		char buf[MAX_PATH];
+		if (!GetModuleBaseNameA(GetCurrentProcess(), hHandle, buf, ARRAYSIZE(buf)))
+			continue;
+
+		std::string signature;
+		MemoryTools::BuildSignaturex86(&signature, pFunc, 20);
+
+		//printf("Index %d : (%s) %s \n", i, buf, signature.c_str());
+		((std::string*)strArray)[i] = signature;
+	}
+
+	return;
 }

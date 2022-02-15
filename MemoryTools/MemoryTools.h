@@ -12,6 +12,9 @@
 #define DLLEXPORT 
 #endif
 
+
+#define THROWEXCEPTION
+
 #define EXTERNCOPEN extern "C" {
 #define EXTERNCCLOSE };
 // Using stdcall for easier use in x86 (not needing to clean up the stack)
@@ -265,6 +268,54 @@ namespace MemoryTools
 		DLLEXPORT void MTCALL MTFree
 		(
 			_In_opt_ void* ptr
+		);
+
+		/// <c> GenerateIntermediaryFunctionx86 </c> 
+		/// <summary> Generates A Function That Serves As A Jump To The Other </summary>
+		/// <param name="pFunc"> A Pointer To Desired Function </param>
+		/// <returns> <strong> void* The Generated Function </strong> </returns>
+		DLLEXPORT _Ret_maybenull_ void* GenerateIntermediaryFunctionx86(
+			_In_ void* pFunc
+		);
+
+		/// <c> FindFunctionPrologueFromReturnAddressx86 </c> 
+		/// <summary> Attempts To Find The Start of a function based off the return address you have </summary>
+		/// <param name="pReturnAddress"> A Pointer To The Return Address to the function to find </param>
+		/// <param name="nMaxNumberOfBytes"> Number Of Bytes To Search </param>
+		/// <returns> <strong> void* The Function Address if found </strong> </returns>
+		DLLEXPORT _Ret_maybenull_ void* FindFunctionPrologueFromReturnAddressx86(
+			_In_ void* pReturnAddress,
+			_In_opt_ int nMaxNumberOfBytes = 0
+		);
+
+		/// <c> CalculateVmtLength </c> 
+		/// <summary> Calculates the total count of functions in a Vtable </summary>
+		/// <param name="vmt"> A Pointer To VTable </param>
+		/// <returns> <strong> size_t The Amount of Functions </strong> </returns>
+		DLLEXPORT size_t CalculateVmtLength(
+			_In_ void* vmt
+		);
+
+		/// <c> BuildSignaturex86 </c> 
+		/// <summary> Create A Code Pattern For A Selected Region Of Memory </summary>
+		/// <param name="pStrObject"> A Pointer To A std::string Object </param>
+		/// <param name="data"> A Pointer To The Data A Signature Will Be Created For </param>
+		/// <param name="len"> Amount Of Bytes To Use In The Pattern </param>
+		DLLEXPORT void BuildSignaturex86(
+			_Outptr_ void* pStrObject,
+			_In_reads_(len) unsigned char* data,
+			_In_ unsigned int len
+		);
+
+		/// <c> CreateVTableSigsx86 </c> 
+		/// <summary> Create A Code Pattern For Each Function In A Vtable, returns nVtableCount is strArray is nullptr </summary>
+		/// <param name="class_definition"> A Pointer To A Virtual Class </param>
+		/// <param name="nVtablesCount"> Number Of Functions To Generate </param>
+		/// <param name="strArray"> A Array of std::string equal to nVtablesCount, if set as 0, nVtablesCount is set </param>
+		DLLEXPORT void CreateVTableSigsx86(
+			_In_ void* class_definition,
+			_In_ int& nVtablesCount,
+			_In_opt_ void* strArray
 		);
 
 	EXTERNCCLOSE

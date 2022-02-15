@@ -185,5 +185,20 @@
 <param name="pszPattern"> The String To Scan For.</param>
 <returns>  Address Pattern Found At Or NULL (no match).</returns>
 </member>
+<member name="M:WinRebuilt.RtlCaptureImageExceptionValues(System.Void*,System.Void**,System.UInt32!System.Runtime.CompilerServices.IsLong*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\WindowsRebuild.h" line="13">
+<summary>
+Queries Exception Information Contained Within An Image 
+</summary>
+<param name="Base"> A Pointer To The Base Address Of The Image </param>
+<param name="FunctionTable"> A Pointer That Recieves The Base Address Of The Function Table </param>
+<param name="TableSize"> Pointer To ULONG That Recieves The Size Of The Function Table </param>
+</member>
+<member name="M:WinRebuilt.RtlImageNtHeader(System.Void*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\WindowsRebuild.h" line="25">
+<summary>
+Gets The NT Header For A Module
+</summary>
+<param name="Base"> Base Address Of Module </param>
+<returns> Pointer To NT Header </returns>
+</member>
 </members>
 </doc>

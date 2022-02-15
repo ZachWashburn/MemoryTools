@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Thirdparty">
+      <UniqueIdentifier>{fd4438d3-e0b4-4fb8-af11-20aeeeded7ed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Thirdparty\hde">
+      <UniqueIdentifier>{0a48225c-c2b6-40aa-93f0-3bf376e7046f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MemoryTools.cpp">
@@ -21,10 +27,37 @@
     <ClCompile Include="MemoryToolsEx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="WindowsRebuild.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\hde\hde32.c">
+      <Filter>Thirdparty\hde</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\hde\hde64.c">
+      <Filter>Thirdparty\hde</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MemoryTools.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="WindowsRebuild.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\hde\hde32.h">
+      <Filter>Thirdparty\hde</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\hde\hde64.h">
+      <Filter>Thirdparty\hde</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\hde\pstdint.h">
+      <Filter>Thirdparty\hde</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\hde\table32.h">
+      <Filter>Thirdparty\hde</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\hde\table64.h">
+      <Filter>Thirdparty\hde</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -1,6 +1,15 @@
-﻿  MemoryTools.cpp
-  MemoryToolsEx.cpp
+﻿  WindowsRebuild.cpp
+C:\Users\user\source\repos\MemoryTools\MemoryTools\WindowsRebuild.cpp(559,8): warning C4133: '-': incompatible types - from 'void *' to 'char *'
+C:\Users\user\source\repos\MemoryTools\MemoryTools\WindowsRebuild.cpp(530,11): warning C4101: 'LoadConfigSize': unreferenced local variable
+C:\Users\user\source\repos\MemoryTools\MemoryTools\WindowsRebuild.cpp(574,19): warning C4101: 'TableSize': unreferenced local variable
+C:\Users\user\source\repos\MemoryTools\MemoryTools\WindowsRebuild.cpp(573,9): warning C4101: 'v3': unreferenced local variable
+C:\Users\user\source\repos\MemoryTools\MemoryTools\WindowsRebuild.cpp(575,11): warning C4101: 'pFunctionTable': unreferenced local variable
+  hde32.c
+cl : command line warning D9032: '-doc' : XML documentation comments are not supported by the C compiler
+  hde64.c
+cl : command line warning D9032: '-doc' : XML documentation comments are not supported by the C compiler
   Generating Code...
-C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.cpp(513): warning C4731: 'CreateNewStackx86': frame pointer register 'ebp' modified by inline assembly code
   MemoryTools.vcxproj -> C:\Users\user\source\repos\MemoryTools\Debug\MemoryTools.lib
+Debug\hde32.xdc : warning XDC0006: file(s) not found
+Debug\hde64.xdc : warning XDC0006: file(s) not found
           1 file(s) copied.
