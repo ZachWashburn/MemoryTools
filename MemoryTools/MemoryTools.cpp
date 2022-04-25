@@ -11,13 +11,23 @@
 #include <winternl.h>
 #include <intrin.h>
 #include <list>
-
+#include <mutex>
+#include <map>
+#include <iomanip>
+#include <stdio.h>
+#include <inttypes.h>
+#include <Zydis/Zydis.h>
+#include <Zycore/Zycore.h>
+#include <DbgHelp.h>
+#include "ThirdParty/MinHook/MinHook.h"
 #include "ThirdParty/hde/hde32.h"
 #include "ThirdParty/hde/hde64.h"
 
 #ifdef THROWEXCEPTION
 #include <exception>
 #endif
+
+#define HEX( x ) std::setw(2) << std::setfill('0') << std::hex << (int)(x)
 
 typedef struct _THREAD_BASIC_INFORMATION
 {
@@ -649,10 +659,31 @@ private:
 
 HookContainer g_Hooks;
 
-_Success_(return != false) bool HookFunctionx86(_In_ void* pFunction, _In_ void* pHook, _Outptr_ void** ppOriginal)
+_Success_(return != false) bool MTCALL MemoryTools::HookFunctionx86(_In_ void* pFunction, _In_ void* pHook, _Outptr_ void** ppOriginal)
 {
+#if 1
+	// Temporarily Using Minhook
+	static bool bInitialized{ false };
 
+	if (!bInitialized)
+	{
+		auto ret = MH_Initialize();
 
+		if (ret != MH_OK || ret != MH_ERROR_ALREADY_INITIALIZED)
+			return false;
+
+		bInitialized = true;
+
+	}
+	auto ret = MH_CreateHook(pFunction, pHook, ppOriginal);
+
+	if (ret != MH_OK)
+		return false;
+
+	ret = MH_EnableHook(MH_ALL_HOOKS);
+
+	return ret == MH_OK;
+#else // Todo : Implement
 	hde32s disasm;
 	int nBytes = 0;
 	_function_hook_t hkinfo;
@@ -695,9 +726,10 @@ _Success_(return != false) bool HookFunctionx86(_In_ void* pFunction, _In_ void*
 	g_Hooks.AddHookEntry(hkinfo);
 
 	return true;
+#endif
 }
 
-_Ret_maybenull_ void* MemoryTools::GenerateIntermediaryFunctionx86(
+_Ret_maybenull_ void* MTCALL MemoryTools::GenerateIntermediaryFunctionx86(
 	_In_ void* pFunc
 )
 {
@@ -715,9 +747,10 @@ _Ret_maybenull_ void* MemoryTools::GenerateIntermediaryFunctionx86(
 }
 
 
-_Ret_maybenull_ void* MemoryTools::FindFunctionPrologueFromReturnAddressx86(
+_Ret_maybenull_ void* MTCALL MemoryTools::FindFunctionPrologueFromReturnAddressx86(
 	_In_ void* pReturnAddress,
-	_In_opt_ int nMaxNumberOfBytes /* = 0*/
+	_In_opt_ int nMaxNumberOfBytes /* = 0*/,
+	_In_ bool bCheckForPushEbp /*= false*/
 )
 {
 	if (!pReturnAddress)
@@ -727,27 +760,31 @@ _Ret_maybenull_ void* MemoryTools::FindFunctionPrologueFromReturnAddressx86(
 		nMaxNumberOfBytes = INT_MAX; // Works Well Enough
 
 	unsigned char* pAddr = (unsigned char*)pReturnAddress;
+	
 	for (int i = 0; i < nMaxNumberOfBytes; i++, pAddr--)
 	{
 		if (i == (nMaxNumberOfBytes - 1))
 			return nullptr;
 
 		if (*pAddr == (unsigned char)0xCC)
-			break;	
+		{
+			if (bCheckForPushEbp && *(pAddr + 1) != 0x55)
+				continue;
+
+			break;
+		}
+
 	}
 
 	pAddr++;
-
-	if (*pAddr != 0x55)
-		return nullptr;
-
+	
 	return pAddr;
 }
 
 #include <sstream>
 #include <iomanip>
 
-size_t MemoryTools::CalculateVmtLength(_In_ void* vmt) 
+size_t MTCALL MemoryTools::CalculateVmtLength(_In_ void* vmt)
 {
 	size_t length = 0;
 	MEMORY_BASIC_INFORMATION memoryInfo;
@@ -756,7 +793,7 @@ size_t MemoryTools::CalculateVmtLength(_In_ void* vmt)
 	return length;
 }
 
-std::string hexStr(BYTE* data, int len)
+std::string MTCALL hexStr(BYTE* data, int len)
 {
 	std::stringstream ss;
 	ss << std::hex;
@@ -770,7 +807,7 @@ std::string hexStr(BYTE* data, int len)
 	return ss.str();
 }
 
-std::string GetHexCharacter(uint8_t Value)
+std::string MTCALL GetHexCharacter(uint8_t Value)
 {
 	std::ostringstream ss;
 	ss << std::hex << std::setw(2) << std::setfill('0');
@@ -780,7 +817,7 @@ std::string GetHexCharacter(uint8_t Value)
 }
 
 
-void MemoryTools::BuildSignaturex86(_Outptr_ void* pStrObject, _In_reads_(len) unsigned char* data, _In_ unsigned int len)
+void MTCALL MemoryTools::BuildSignaturex86(_Outptr_ void* pStrObject, _In_reads_(len) unsigned char* data, _In_ unsigned int len, _In_opt_ bool bUseWildCards)
 {
 	std::string* pOutput = reinterpret_cast<std::string*>(pStrObject);
 	std::ostringstream sig;
@@ -807,7 +844,7 @@ void MemoryTools::BuildSignaturex86(_Outptr_ void* pStrObject, _In_reads_(len) u
 				continue;
 		}
 
-		if (disasm.imm.imm32 && disasm.len >= 5)
+		if ((disasm.imm.imm32 && disasm.len >= 5) && bUseWildCards)
 		{
 			for (int i = 0; i < (disasm.len - nRead); i++)
 				sig << "??" << " ";
@@ -824,7 +861,7 @@ void MemoryTools::BuildSignaturex86(_Outptr_ void* pStrObject, _In_reads_(len) u
 	*pOutput = sig.str();
 }
 
-void MemoryTools::CreateVTableSigsx86(_In_ void* class_definition, _In_ int& nVtablesCount, _In_opt_ void* strArray)
+void MTCALL MemoryTools::CreateVTableSigsx86(_In_ void* class_definition, _In_ int& nVtablesCount, _In_opt_ void* strArray, _In_opt_ int nSigSize, _In_opt_ bool bUseWildCards)
 {
 	nVtablesCount = MemoryTools::CalculateVmtLength((void*)*(uintptr_t*)class_definition);
 
@@ -847,11 +884,539 @@ void MemoryTools::CreateVTableSigsx86(_In_ void* class_definition, _In_ int& nVt
 			continue;
 
 		std::string signature;
-		MemoryTools::BuildSignaturex86(&signature, pFunc, 20);
-
-		//printf("Index %d : (%s) %s \n", i, buf, signature.c_str());
-		((std::string*)strArray)[i] = signature;
+		MemoryTools::BuildSignaturex86(&signature, pFunc, nSigSize, bUseWildCards);
+		((std::string*)strArray)[i] = std::format("Index {} : ({}) {}", i, buf, signature);
 	}
 
 	return;
 }
+
+
+void* MTCALL MemoryTools::GetVTableFuncAddress(_In_ void* class_definition, _In_ int nVtableOffset)
+{
+	unsigned char* pFunc = (*reinterpret_cast<unsigned char***>(class_definition))[nVtableOffset];
+	return pFunc;
+}
+
+void MTCALL MemoryTools::GetAddressModuleName(
+	_In_ void* pAddress,
+	_In_ void* pString
+)
+{
+
+	std::string* pStr = (std::string*)pString;
+	*pStr = "INVALID";
+
+	HMODULE hHandle;
+	if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)pAddress, &hHandle))
+		return;
+
+	char buf[MAX_PATH];
+	if (!GetModuleBaseNameA(GetCurrentProcess(), hHandle, buf, ARRAYSIZE(buf)))
+		return;
+
+	*pStr = buf;
+
+}
+
+std::string uchar2hex(unsigned char inchar)
+{
+	std::ostringstream oss(std::ostringstream::out);
+	oss << std::setw(2) << std::setfill('0') << std::hex << (int)(inchar);
+	return oss.str();
+}
+
+
+void MTCALL MemoryTools::DisassembleMemoryRegionx86(
+	_In_ void* pStrObject,
+	_In_reads_bytes_(nRegionSize) void* pMemory,
+	_In_ size_t nRegionSize,
+	_In_ int line_indentation /*= 0*/
+)
+{
+	std::string* str = reinterpret_cast<std::string*>(pStrObject);
+
+	// Initialize decoder context
+	ZydisDecoder decoder;
+	ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_COMPAT_32, ZYDIS_ADDRESS_WIDTH_32);
+
+	// Initialize formatter
+	ZydisFormatter formatter;
+	ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
+
+	ZyanUSize offset = 0;
+	const ZyanUSize length = nRegionSize;
+
+	ZyanU32 runtime_address = (ZyanU32)pMemory;
+	ZydisDecodedInstruction instruction;
+	ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
+	
+
+	hde32s disasm;
+
+
+	while (ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, (char*)pMemory + offset, length - offset,
+		&instruction)))
+	{
+		// Format & print the binary instruction structure to human readable format
+		char buffer[256];
+		ZydisFormatterFormatInstruction(&formatter, &instruction,
+			 buffer, sizeof(buffer), runtime_address);
+		//puts(buffer);
+
+
+		// TODO : Clean This Up!!!
+		std::string bytes;
+
+		int i = 0;
+		for (;i < instruction.length; i++)
+		{
+			unsigned char byte = ((unsigned char*)runtime_address)[i];
+
+			bytes.append(uchar2hex(byte));
+			bytes.append(" ");
+		}
+
+		for (; i < 8; i++)
+			bytes.append("   ");
+		
+
+		str->append("\n");
+		for (int i = 0; i < line_indentation; i++)
+			str->append(" ");
+
+		char addrbuffer[10] = { 0 };
+		snprintf(addrbuffer, sizeof(buffer), "%p", runtime_address);
+
+		str->append(addrbuffer);
+		str->append(" ");
+		str->append(bytes);
+		str->append(" ");
+		str->append(buffer);
+
+		offset += instruction.length;
+		runtime_address += instruction.length;
+
+	}
+
+	return;
+}
+
+
+unsigned int MTCALL MemoryTools::InstructionSizex86(
+	_In_ char* pAddress
+)
+{
+	hde32s disasm;
+	return hde32_disasm(pAddress, &disasm);
+}
+
+void MTCALL MemoryTools::GetDebugCallStackString(void* pStr, bool bFindFunctionProlouge, unsigned int nCallStackMax, unsigned int hThread)
+{
+
+
+	std::string* pOutString = reinterpret_cast<std::string*>(pStr);
+
+	char** callstack = (char**)_malloca(nCallStackMax * sizeof(char*));
+
+	DWORD** params = (DWORD**)malloc(sizeof(DWORD*) * nCallStackMax);
+
+	for (int i = 0; i < nCallStackMax; i++)
+	{
+		params[i] = (DWORD*)malloc(sizeof(DWORD*) * 4);
+		memset(params[i], 0x00, sizeof(DWORD) * 4);
+	}
+
+	unsigned int FuncsGot = GetCallStackx86(callstack, nCallStackMax * sizeof(char*), true, bFindFunctionProlouge, (unsigned int**)params, hThread);
+
+
+
+	// Huge String ik....
+	char buf[4096];
+	snprintf(buf, ARRAYSIZE(buf), "\n\n\n\n--- Call Stack (%d calls) ---\n", FuncsGot);
+	pOutString->append(buf);
+
+	auto build_params_string = [](DWORD* _params, int nIndent) {
+		std::string out_str;
+		char buffer[4096];
+		for (int i = 0; i < 4; i++)
+		{
+			for (int j = 0; j < nIndent; j++)
+				out_str.append(" ");
+
+			DWORD dwValue = _params[i];
+			snprintf(buffer, sizeof(buffer), "%d : (%s)|(%d) \n", 
+				i,
+				hexStr((BYTE*)(&dwValue),
+					sizeof(DWORD)).c_str(), dwValue
+			);
+			out_str.append(buffer);
+		}
+		return out_str;
+	};
+	
+	char buffer[4096 * 50];
+	for (int i = 0; i < FuncsGot; i++)
+	{
+		memset(buffer, 0x00, sizeof(buffer));
+		if (!callstack[i])
+		{
+			snprintf(buffer, sizeof(buffer), "\n -- WARNING = Function Call %d Unable To Fetch --\n", i);
+			pOutString->append(buffer);
+			continue;
+		}
+
+		std::string ret_disasm;
+		std::string sig;
+		std::string module_name;
+		std::string func_name = "";
+		void* pModuleStart;
+		void* pModuleEnd;
+		BuildSignaturex86(&sig, (unsigned char*)(callstack[i]), 20);
+		DisassembleMemoryRegionx86(&ret_disasm, callstack[i], 30, 5);
+		GetAddressModuleName(callstack[i], &module_name);
+		GetFunctionSymbolName(&func_name, callstack[i]);
+		GetModuleBounds(callstack[i], pModuleStart, pModuleEnd);
+		snprintf(buffer, sizeof(buffer), "- Call %d : 0x%p (%s @ %s (0x%p -> 0x%p))\n   Sig : (%s)\n\n   Possible Params:\n%s\n   Ret Addr Disasm:\n  %s\n \n\n",
+			i,
+			callstack[i],
+			func_name.c_str(),
+			module_name.c_str(),
+			pModuleStart,
+			pModuleEnd,
+			sig.c_str(),
+			build_params_string(params[i], 5).c_str(),
+			ret_disasm.c_str()
+		);
+
+		pOutString->append(buffer);
+	}
+
+	for (int i = 0; i < nCallStackMax; i++)
+	{
+		free(params[i]);
+	}
+	free(params);
+
+	_freea(callstack);
+}
+
+
+
+
+void MTCALL MemoryTools::GetFunctionSymbolName(_In_ void* pString, void* pAddr)
+{
+	SymInitialize(GetCurrentProcess(), NULL, TRUE);
+	DWORD displacement = 0;
+	char name[1024] = { 0 };
+	const int MaxNameLen = 255;
+	IMAGEHLP_SYMBOL* pSymbol =
+		(IMAGEHLP_SYMBOL*)malloc(sizeof(IMAGEHLP_SYMBOL64) + MaxNameLen * sizeof(TCHAR));
+	pSymbol->MaxNameLength = MaxNameLen;
+
+	if (SymGetSymFromAddr(GetCurrentProcess(), (ULONG)pAddr, &displacement, pSymbol))
+		UnDecorateSymbolName(pSymbol->Name, (PSTR)name, 256, UNDNAME_COMPLETE);
+	else
+		*((std::string*)(pString)) = "!#no_symbol_avaliable#!";
+
+	if (name[0] == 0x00)
+	{
+		*((std::string*)(pString)) = "!#no_symbol_avaliable#!";
+		//std::string module_name;
+		void* pMin = nullptr;
+		void* pMax = nullptr;
+		//MemoryTools::GetAddressModuleName(pAddr, &module_name);
+		MemoryTools::GetModuleBounds(pAddr, pMin, pMax);
+
+		snprintf(name, sizeof(name), " #no_symbol# [ (0x%p) + 0x%p ]", pMin, (char*)pAddr - pMin);
+		((std::string*)(pString))->append(name);
+	}
+
+
+	*((std::string*)(pString)) = std::string(name);
+}
+
+void MTCALL MemoryTools::GetModuleBounds(_In_ void* pAddr, _Outptr_ void*& nMinAddr, _Outptr_ void*& nMaxAddr)
+{
+	HMODULE hHandle;
+	if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)pAddr, &hHandle))
+		return;
+
+	MODULEINFO modinfo;
+	if(!GetModuleInformation(
+		GetCurrentProcess(),
+		hHandle,
+		&modinfo,
+		sizeof(MODULEINFO)
+	)) {
+		return;
+	}
+
+	nMinAddr = modinfo.lpBaseOfDll;
+	nMaxAddr = ((char*)modinfo.lpBaseOfDll + modinfo.SizeOfImage);
+}
+
+
+__declspec(naked) void WINAPI CaptureContext_X86ControlOnly(CONTEXT* context) {
+	__asm {
+		push ebp
+		mov  ebp, esp
+		mov  ecx, context            //ecx = [ebp + 8]
+		pop  ebp                     //restore old frame
+		pop  eax                     //pop return address
+		pop  ecx                     //pop context as WINAPI needs. Note: ecx will stay the same
+		mov[ecx]CONTEXT.ContextFlags, CONTEXT_CONTROL
+		mov[ecx]CONTEXT.Ebp, ebp
+		mov[ecx]CONTEXT.Eip, eax
+		mov[ecx]CONTEXT.Esp, esp
+		jmp  eax
+	}
+} //I'm writing from my memory - so step through the code above to double check.
+
+unsigned int MTCALL MemoryTools::GetCallStackx86(
+	_In_ char** pArray,
+	_In_ unsigned int nNumFuncsToFetch,
+	_In_ bool bGetReturnAddressInstead /*= false*/,
+	_In_ bool bAttemptPrologueFind /*= false*/,
+	_In_ unsigned int** pParams /*= nullptr*/,
+	_In_ unsigned int hThreadHandle/* = -1*/
+)
+{
+	STACKFRAME sfFrame;
+	CONTEXT             cxRecord;
+	HANDLE hProcess;
+	HANDLE hThread = (HANDLE)hThreadHandle;
+	DWORD             displacement;
+	hProcess = GetCurrentProcess();
+
+	if (!hThreadHandle)
+	{
+		hThread = GetCurrentThread();
+		CaptureContext_X86ControlOnly(&cxRecord);
+	}
+	else
+	{
+		cxRecord.ContextFlags = CONTEXT_FULL;
+		if (!GetThreadContext(hThread, &cxRecord))	
+			return 0;
+		
+
+	}
+	//RtlCaptureContext(&cxRecord);
+	memset(&sfFrame, 0, sizeof(STACKFRAME));
+	//SymInitialize(hProcess, nullptr, true);
+
+	displacement = 0;
+	sfFrame.AddrPC.Offset = cxRecord.Eip;
+	sfFrame.AddrPC.Mode = AddrModeFlat;
+	sfFrame.AddrStack.Offset = cxRecord.Esp;
+	sfFrame.AddrStack.Mode = AddrModeFlat;
+	sfFrame.AddrFrame.Offset = cxRecord.Ebp;
+	sfFrame.AddrFrame.Mode = AddrModeFlat;
+
+	unsigned int nFrameCount = 0;
+	for (; nFrameCount < nNumFuncsToFetch; nFrameCount++)
+	{
+		HRESULT hRes = StackWalk
+		(
+			IMAGE_FILE_MACHINE_I386,
+			hProcess,
+			hThread,
+			&sfFrame,
+			&cxRecord,
+			NULL,
+			SymFunctionTableAccess,
+			SymGetModuleBase,
+			NULL
+		);
+
+
+		char* pFoundAddr = bGetReturnAddressInstead ? (char*)sfFrame.AddrReturn.Offset : (char*)sfFrame.AddrPC.Offset;
+		if (bAttemptPrologueFind)
+		{
+			char* pPrologue = (char*)FindFunctionPrologueFromReturnAddressx86(pFoundAddr, 100, true);
+			pFoundAddr = pPrologue != nullptr ? pPrologue : pFoundAddr;
+		}
+
+		pArray[nFrameCount] = pFoundAddr;
+
+		if (pParams)
+			memcpy(pParams[nFrameCount], sfFrame.Params, sizeof(sfFrame.Params));
+
+
+		if (!hRes)
+			break;	
+	}
+
+	return --nFrameCount;
+}
+
+
+std::mutex g_DebuggingMutex;
+
+
+
+void RemoveCallTree();
+class BuildCallTree
+{
+public:
+
+	struct _CallStack
+	{
+		enum Type {
+			RETURN,
+			CALL,
+		};
+
+		void* pNextAddress;
+	};
+
+	~BuildCallTree() { RemoveCallTree(); }
+
+
+	void MakeExecutableWriteable(void* pAddress)
+	{
+		VirtualProtect(pAddress, 4000, PAGE_EXECUTE_READWRITE, &m_dwLastPageProtection);
+	}
+
+	void WriteBreakPoint(void* pAddress)
+	{
+		MakeExecutableWriteable(pAddress);
+		m_cReplacedInstruction = *(unsigned char*)pAddress;
+		*(unsigned char*)pAddress = 0xCC;
+	}
+
+	void StartCallTree()
+	{
+		void* pStartAddress = _ReturnAddress();
+		WriteBreakPoint(pStartAddress);
+	}
+
+	bool IsCall(unsigned char cOpCode, int nLength)
+	{
+		switch ((int)cOpCode)
+		{
+		case 0xFF:
+			if (nLength > 3)
+				return false;
+		case 0xE8:
+		case 0x9A:
+			return true;
+			break;
+		default:
+			return false;
+			break;
+		}
+	}
+
+	bool IsRet(unsigned char cOpCode)
+	{
+		switch ((int)cOpCode)
+		{
+		case 0xC3:
+		case 0xCB:
+		case 0xC2:
+		case 0xCA:
+			return true;
+			break;
+		default:
+			return false;
+			break;
+		}
+	}
+
+	bool IsJMP(unsigned char cOpCode)
+	{
+		switch ((int)cOpCode)
+		{
+		case 0xFF:
+		case 0xEB:
+		case 0xE9:
+		case 0xEA:
+			return true;
+			break;
+		default:
+			return false;
+			break;
+		}
+	}
+
+
+	void OnStep(CONTEXT* pContextRecord)
+	{
+		hde32s disasm;
+		hde32_disasm((const void*)pContextRecord->Eip, &disasm);
+
+		
+
+		//disasm.opcode == 0xE8
+
+	}
+
+private:
+	bool bNextAddressIsCall = false;
+	bool bNextAddressIsRet = false;
+
+	void* m_pLastAddress = nullptr;
+	DWORD m_dwLastPageProtection = PAGE_EXECUTE_READWRITE;
+	unsigned char m_cReplacedInstruction;
+};
+
+class MemToolsExceptionHelper
+{
+public:
+
+	bool bHasCallTree(){return m_CallTrees[GetCurrentThreadId()] != nullptr ? true : false;}
+
+
+	BuildCallTree* GetCallTree() { return m_CallTrees[GetCurrentThreadId()]; }
+
+	void StartCallTreeOnThread()
+	{
+		m_CallTrees[GetCurrentThreadId()] = new BuildCallTree();
+	}
+
+	void DeleteCallTree()
+	{
+		m_CallTrees[GetCurrentThreadId()] = nullptr;
+	}
+
+private:
+	std::map<DWORD, BuildCallTree*> m_CallTrees;
+};
+
+MemToolsExceptionHelper g_Exceptions;
+
+
+void _RemoveCallTree()
+{
+	g_Exceptions.DeleteCallTree();
+}
+
+
+EXCEPTION_DISPOSITION __cdecl MemToolsExceptionHandler(
+	EXCEPTION_RECORD* pRecord,
+	void* pEstablisherFrame,
+	CONTEXT* pContextRecord,
+	void* DispatcherContext
+
+)
+{
+
+	if (pRecord->ExceptionInformation[0] == EXCEPTION_SINGLE_STEP)
+	{
+		BuildCallTree* pTree = g_Exceptions.GetCallTree();
+
+		if (!pTree)
+			return ExceptionContinueExecution;
+
+
+
+
+
+
+	}
+}
+
+
+

@@ -149,34 +149,102 @@
 <param name="pFunc"> A Pointer To Desired Function </param>
 <returns> <strong> void* The Generated Function </strong> </returns>
 </member>
-<member name="M:MemoryTools.FindFunctionPrologueFromReturnAddressx86(System.Void*,System.Int32)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="281">
+<member name="M:MemoryTools.FindFunctionPrologueFromReturnAddressx86(System.Void*,System.Int32,System.Boolean)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="281">
 <c> FindFunctionPrologueFromReturnAddressx86 </c> 
 <summary> Attempts To Find The Start of a function based off the return address you have </summary>
 <param name="pReturnAddress"> A Pointer To The Return Address to the function to find </param>
 <param name="nMaxNumberOfBytes"> Number Of Bytes To Search </param>
 <returns> <strong> void* The Function Address if found </strong> </returns>
 </member>
-<member name="M:MemoryTools.CalculateVmtLength(System.Void*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="291">
+<member name="M:MemoryTools.CalculateVmtLength(System.Void*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="292">
 <c> CalculateVmtLength </c> 
 <summary> Calculates the total count of functions in a Vtable </summary>
 <param name="vmt"> A Pointer To VTable </param>
 <returns> <strong> size_t The Amount of Functions </strong> </returns>
 </member>
-<member name="M:MemoryTools.BuildSignaturex86(System.Void*,System.Byte*,System.UInt32)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="299">
+<member name="M:MemoryTools.BuildSignaturex86(System.Void*,System.Byte*,System.UInt32,System.Boolean)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="300">
 <c> BuildSignaturex86 </c> 
 <summary> Create A Code Pattern For A Selected Region Of Memory </summary>
 <param name="pStrObject"> A Pointer To A std::string Object </param>
 <param name="data"> A Pointer To The Data A Signature Will Be Created For </param>
 <param name="len"> Amount Of Bytes To Use In The Pattern </param>
+<param name="bUseWildCards"> States Whether To Use Wildcards or not, True by default </param>
 </member>
-<member name="M:MemoryTools.CreateVTableSigsx86(System.Void*,System.Int32*!System.Runtime.CompilerServices.IsImplicitlyDereferenced,System.Void*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="310">
+<member name="M:MemoryTools.CreateVTableSigsx86(System.Void*,System.Int32*!System.Runtime.CompilerServices.IsImplicitlyDereferenced,System.Void*,System.Int32,System.Boolean)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="313">
 <c> CreateVTableSigsx86 </c> 
 <summary> Create A Code Pattern For Each Function In A Vtable, returns nVtableCount is strArray is nullptr </summary>
 <param name="class_definition"> A Pointer To A Virtual Class </param>
 <param name="nVtablesCount"> Number Of Functions To Generate </param>
 <param name="strArray"> A Array of std::string equal to nVtablesCount, if set as 0, nVtablesCount is set </param>
+<param name="nSigSize"> Number Of Bytes To Use In The signature (defualt 20) </param>
+<param name="bUseWildCards"> States Whether To Use Wildcards or not, True by default </param>
 </member>
-<member name="M:MemoryToolsEx.PatternScanMemoryRegionEx(System.Void*,System.Void*,System.UInt32,System.SByte!System.Runtime.CompilerServices.IsSignUnspecifiedByte!System.Runtime.CompilerServices.IsConst*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="330">
+<member name="M:MemoryTools.DisassembleMemoryRegionx86(System.Void*,System.Void*,System.UInt32,System.Int32)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="329">
+<c> DisassembleMemoryRegion </c> 
+<summary> Disassembles A Memory Region And Returns A String With The Disassembled Memory </summary>
+<param name="pStrObject"> A Pointer To A std::string objectg </param>
+<param name="pMemory"> A Pointer To The Memory Region To Disassemble </param>
+<param name="nRegionSize"> The Size Of The Memory Region Of Which To Disassemble </param>
+<param name="line_indentation"> Indents The Lines (Formatter Helping) </param>
+</member>
+<member name="M:MemoryTools.InstructionSizex86(System.SByte!System.Runtime.CompilerServices.IsSignUnspecifiedByte*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="342">
+<c> InstructionSizex86 </c> 
+<summary> Gets The Current Size Of The Instruction </summary>
+<param name="pAddress"> A Pointer To The Memory Region To Disassemble </param>
+</member>
+<member name="M:MemoryTools.GetCallStackx86(System.SByte!System.Runtime.CompilerServices.IsSignUnspecifiedByte**,System.UInt32,System.Boolean,System.Boolean,System.UInt32**,System.UInt32)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="349">
+<c> GetCallStackx86 </c> 
+<summary> Gets A Callstack to current Function </summary>
+<param name="pArray"> A Pointer To An array of nNumFuncsToFetch char* </param>
+<param name="nNumFuncsToFetch"> Number Of Functions To Get </param>
+<param name="bGetReturnAddressInstead"> Get Return Address Instead Of Func Address </param>
+<param name="bAttemptPrologueFind"> Attempt To Find The Start Address Of Functions </param>
+<param name="pParams"> Array of DWORD[4][nNumFuncsToFetch], Will Contain Possible Params Passed To Function </param>
+<param name="hThreadHandle"> Thread Handle, If Not Specified, Will Use Current Thread </param>
+<returns> Number Of Fetched Functions From Frame </returns>
+</member>
+<member name="M:MemoryTools.GetVTableFuncAddress(System.Void*,System.Int32)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="367">
+<c> GetVTableFuncAddress </c> 
+<summary> Get The Address For A VTableFunction </summary>
+<param name="class_definition"> A Pointer To A Virtual Class </param>
+<param name="nVtableOffset"> The Function Offset </param>
+</member>
+<member name="M:MemoryTools.GetAddressModuleName(System.Void*,System.Void*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="376">
+<c> GetVTableFuncAddress </c> 
+<summary> Get A String Of The Module A Function Lies In </summary>
+<param name="pAddress"> A Pointer To The Address </param>
+<param name="pString"> A Pointer To The std::string object </param>
+</member>
+<member name="M:MemoryTools.GetModuleBounds(System.Void*,System.Void**!System.Runtime.CompilerServices.IsImplicitlyDereferenced,System.Void**!System.Runtime.CompilerServices.IsImplicitlyDereferenced)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="385">
+<c> GetModuleBounds </c> 
+<summary> Get Bounds Of A Loaded Module That An Address Lies In </summary>
+<param name="pAddr"> A Pointer To An Address </param>
+<param name="nMinAddr"> Min (Base) Address Of The Module </param>
+<param name="nMaxAddr"> Max Address Of The Module </param>
+</member>
+<member name="M:MemoryTools.GetFunctionSymbolName(System.Void*,System.Void*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="392">
+<c> GetFunctionSymbolName </c> 
+<summary> Get The Name Of A Function Symbol (if any) </summary>
+<param name="pString"> Pointer to std::string object that holds the value </param>
+<param name="pAddr"> Pointer To Function </param>
+</member>
+<member name="M:MemoryTools.GetDebugCallStackString(System.Void*,System.Boolean,System.UInt32,System.UInt32)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="398">
+<c> GetDebugCallStackString </c> 
+<summary> Get A Full Callstack Debug Dump </summary>
+<param name="pString"> Pointer to std::string object that holds the value </param>
+<param name="bFindFunctionProlouge"> Attempt To Find The Start Of The Functions (Experimental) </param>
+<param name="nCallStackMax"> Max Calls To Print </param>
+<param name="hThread"> Thread To Get Stack For (0 for current thread) </param>
+</member>
+<member name="M:MemoryTools.HookFunctionx86(System.Void*,System.Void*,System.Void**)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="410">
+<c> HookFunctionx86 </c> 
+<summary> Hook A Function (Currently using MinHook) </summary>
+<param name="pFunction"> Point to The Function We Want To Hook </param>
+<param name="pHook"> Function Calls Will Be Detoured Too </param>
+<param name="ppOriginal"> Pointer to the value that will store the original func addr </param>
+<returns> True On Success, False On Failure </returns>
+</member>
+<member name="M:MemoryToolsEx.PatternScanMemoryRegionEx(System.Void*,System.Void*,System.UInt32,System.SByte!System.Runtime.CompilerServices.IsSignUnspecifiedByte!System.Runtime.CompilerServices.IsConst*)" decl="true" source="C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.h" line="431">
 <c>PatternScanMemoryRegionEx</c> 
 <summary> Find a Pattern within pBaseAddress to pBaseAddress + nRegionSize. Of An External Process </summary>
 <param name="hProcess"> A (HANDLE) to the Process of Which We Are Scanning </param>

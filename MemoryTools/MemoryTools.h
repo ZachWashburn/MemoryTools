@@ -274,7 +274,7 @@ namespace MemoryTools
 		/// <summary> Generates A Function That Serves As A Jump To The Other </summary>
 		/// <param name="pFunc"> A Pointer To Desired Function </param>
 		/// <returns> <strong> void* The Generated Function </strong> </returns>
-		DLLEXPORT _Ret_maybenull_ void* GenerateIntermediaryFunctionx86(
+		DLLEXPORT _Ret_maybenull_ void* MTCALL GenerateIntermediaryFunctionx86(
 			_In_ void* pFunc
 		);
 
@@ -283,16 +283,17 @@ namespace MemoryTools
 		/// <param name="pReturnAddress"> A Pointer To The Return Address to the function to find </param>
 		/// <param name="nMaxNumberOfBytes"> Number Of Bytes To Search </param>
 		/// <returns> <strong> void* The Function Address if found </strong> </returns>
-		DLLEXPORT _Ret_maybenull_ void* FindFunctionPrologueFromReturnAddressx86(
+		DLLEXPORT _Ret_maybenull_ void* MTCALL FindFunctionPrologueFromReturnAddressx86(
 			_In_ void* pReturnAddress,
-			_In_opt_ int nMaxNumberOfBytes = 0
+			_In_opt_ int nMaxNumberOfBytes = 0,
+			_In_ bool bCheckForPushEbp = false
 		);
 
 		/// <c> CalculateVmtLength </c> 
 		/// <summary> Calculates the total count of functions in a Vtable </summary>
 		/// <param name="vmt"> A Pointer To VTable </param>
 		/// <returns> <strong> size_t The Amount of Functions </strong> </returns>
-		DLLEXPORT size_t CalculateVmtLength(
+		DLLEXPORT size_t MTCALL CalculateVmtLength(
 			_In_ void* vmt
 		);
 
@@ -301,10 +302,12 @@ namespace MemoryTools
 		/// <param name="pStrObject"> A Pointer To A std::string Object </param>
 		/// <param name="data"> A Pointer To The Data A Signature Will Be Created For </param>
 		/// <param name="len"> Amount Of Bytes To Use In The Pattern </param>
-		DLLEXPORT void BuildSignaturex86(
+		/// <param name="bUseWildCards"> States Whether To Use Wildcards or not, True by default </param>
+		DLLEXPORT void MTCALL BuildSignaturex86(
 			_Outptr_ void* pStrObject,
 			_In_reads_(len) unsigned char* data,
-			_In_ unsigned int len
+			_In_ unsigned int len,
+			_In_opt_ bool bUseWildCards = true
 		);
 
 		/// <c> CreateVTableSigsx86 </c> 
@@ -312,10 +315,108 @@ namespace MemoryTools
 		/// <param name="class_definition"> A Pointer To A Virtual Class </param>
 		/// <param name="nVtablesCount"> Number Of Functions To Generate </param>
 		/// <param name="strArray"> A Array of std::string equal to nVtablesCount, if set as 0, nVtablesCount is set </param>
-		DLLEXPORT void CreateVTableSigsx86(
+		/// <param name="nSigSize"> Number Of Bytes To Use In The signature (defualt 20) </param>
+		/// <param name="bUseWildCards"> States Whether To Use Wildcards or not, True by default </param>
+		DLLEXPORT void MTCALL CreateVTableSigsx86(
 			_In_ void* class_definition,
 			_In_ int& nVtablesCount,
-			_In_opt_ void* strArray
+			_In_opt_ void* strArray,
+			_In_opt_ int nSigSize = 20,
+			_In_opt_ bool bUseWildCards = true
+		);
+
+
+		/// <c> DisassembleMemoryRegion </c> 
+		/// <summary> Disassembles A Memory Region And Returns A String With The Disassembled Memory </summary>
+		/// <param name="pStrObject"> A Pointer To A std::string objectg </param>
+		/// <param name="pMemory"> A Pointer To The Memory Region To Disassemble </param>
+		/// <param name="nRegionSize"> The Size Of The Memory Region Of Which To Disassemble </param>
+		/// <param name="line_indentation"> Indents The Lines (Formatter Helping) </param>
+		DLLEXPORT void MTCALL DisassembleMemoryRegionx86(
+			_In_ void* pStrObject,
+			_In_reads_bytes_(nRegionSize) void* pMemory,
+			_In_ size_t nRegionSize,
+			_In_ int line_indentation = 0
+		);
+
+		/// <c> InstructionSizex86 </c> 
+		/// <summary> Gets The Current Size Of The Instruction </summary>
+		/// <param name="pAddress"> A Pointer To The Memory Region To Disassemble </param>
+		DLLEXPORT unsigned int MTCALL InstructionSizex86(
+			_In_ char* pAddress
+		);
+
+		/// <c> GetCallStackx86 </c> 
+		/// <summary> Gets A Callstack to current Function </summary>
+		/// <param name="pArray"> A Pointer To An array of nNumFuncsToFetch char* </param>
+		/// <param name="nNumFuncsToFetch"> Number Of Functions To Get </param>
+		/// <param name="bGetReturnAddressInstead"> Get Return Address Instead Of Func Address </param>
+		/// <param name="bAttemptPrologueFind"> Attempt To Find The Start Address Of Functions </param>
+		/// <param name="pParams"> Array of DWORD[4][nNumFuncsToFetch], Will Contain Possible Params Passed To Function </param>
+		/// <param name="hThreadHandle"> Thread Handle, If Not Specified, Will Use Current Thread </param>
+		/// <returns> Number Of Fetched Functions From Frame </returns>
+		DLLEXPORT unsigned int MTCALL GetCallStackx86(
+			_In_ char** pArray,
+			_In_ unsigned int nNumFuncsToFetch,
+			_In_ bool bGetReturnAddressInstead = false,
+			_In_ bool bAttemptPrologueFind = false,
+			_In_ unsigned int** pParams = nullptr,
+			_In_ unsigned int hThreadHandle = 0
+		);
+
+		/// <c> GetVTableFuncAddress </c> 
+		/// <summary> Get The Address For A VTableFunction </summary>
+		/// <param name="class_definition"> A Pointer To A Virtual Class </param>
+		/// <param name="nVtableOffset"> The Function Offset </param>
+		DLLEXPORT void* MTCALL GetVTableFuncAddress(
+			_In_ void* class_definition,
+			_In_ int nVtableOffset
+		);
+
+		/// <c> GetVTableFuncAddress </c> 
+		/// <summary> Get A String Of The Module A Function Lies In </summary>
+		/// <param name="pAddress"> A Pointer To The Address </param>
+		/// <param name="pString"> A Pointer To The std::string object </param>
+		DLLEXPORT void MTCALL GetAddressModuleName(
+			_In_ void* pAddress,
+			_In_ void* pString
+		);
+
+		/// <c> GetModuleBounds </c> 
+		/// <summary> Get Bounds Of A Loaded Module That An Address Lies In </summary>
+		/// <param name="pAddr"> A Pointer To An Address </param>
+		/// <param name="nMinAddr"> Min (Base) Address Of The Module </param>
+		/// <param name="nMaxAddr"> Max Address Of The Module </param>
+		DLLEXPORT void MTCALL GetModuleBounds(_In_ void* pAddr, _Outptr_ void*& nMinAddr, _Outptr_ void*& nMaxAddr);
+
+		/// <c> GetFunctionSymbolName </c> 
+		/// <summary> Get The Name Of A Function Symbol (if any) </summary>
+		/// <param name="pString"> Pointer to std::string object that holds the value </param>
+		/// <param name="pAddr"> Pointer To Function </param>
+		DLLEXPORT void MTCALL GetFunctionSymbolName(_In_ void* pString, _In_ void* pAddr);
+
+		/// <c> GetDebugCallStackString </c> 
+		/// <summary> Get A Full Callstack Debug Dump </summary>
+		/// <param name="pString"> Pointer to std::string object that holds the value </param>
+		/// <param name="bFindFunctionProlouge"> Attempt To Find The Start Of The Functions (Experimental) </param>
+		/// <param name="nCallStackMax"> Max Calls To Print </param>
+		/// <param name="hThread"> Thread To Get Stack For (0 for current thread) </param>
+		DLLEXPORT void MTCALL GetDebugCallStackString(_In_ void* pStr,
+			_In_ bool bFindFunctionProlouge = true,
+			_In_ unsigned int nCallStackMax = 20,
+			_In_ unsigned int hThread = 0
+		);
+		
+		/// <c> HookFunctionx86 </c> 
+		/// <summary> Hook A Function (Currently using MinHook) </summary>
+		/// <param name="pFunction"> Point to The Function We Want To Hook </param>
+		/// <param name="pHook"> Function Calls Will Be Detoured Too </param>
+		/// <param name="ppOriginal"> Pointer to the value that will store the original func addr </param>
+		/// <returns> True On Success, False On Failure </returns>
+		DLLEXPORT _Success_(return != false) bool MTCALL HookFunctionx86(
+			_In_ void* pFunction,
+			_In_ void* pHook,
+			_Outptr_ void** ppOriginal
 		);
 
 	EXTERNCCLOSE

@@ -19,6 +19,9 @@
     <Filter Include="Thirdparty\hde">
       <UniqueIdentifier>{0a48225c-c2b6-40aa-93f0-3bf376e7046f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Thirdparty\MinHook">
+      <UniqueIdentifier>{ddc77cfb-7762-4e89-a78b-dfb6016ee0b6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MemoryTools.cpp">
@@ -35,6 +38,15 @@
     </ClCompile>
     <ClCompile Include="ThirdParty\hde\hde64.c">
       <Filter>Thirdparty\hde</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\MinHook\buffer.c">
+      <Filter>Thirdparty\MinHook</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\MinHook\hook.c">
+      <Filter>Thirdparty\MinHook</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\MinHook\trampoline.c">
+      <Filter>Thirdparty\MinHook</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -58,6 +70,15 @@
     </ClInclude>
     <ClInclude Include="ThirdParty\hde\table64.h">
       <Filter>Thirdparty\hde</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\MinHook\buffer.h">
+      <Filter>Thirdparty\MinHook</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\MinHook\MinHook.h">
+      <Filter>Thirdparty\MinHook</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\MinHook\trampoline.h">
+      <Filter>Thirdparty\MinHook</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

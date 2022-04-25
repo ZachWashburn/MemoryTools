@@ -72,6 +72,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>C:\Users\user\vcpkg\packages\zydis_x86-windows\include\;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\user\vcpkg\packages\zydis_x86-windows\lib\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -100,7 +102,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>Ntdll.lib</AdditionalDependencies>
+      <AdditionalDependencies>Ntdll.lib; Zydis.lib; Zycore.lib; 	DbgHelp.lib</AdditionalDependencies>
     </Lib>
     <PostBuildEvent>
       <Command>copy MemoryTools.h $(OutDir)</Command>
@@ -164,6 +166,9 @@
     <ClCompile Include="MemoryToolsEx.cpp" />
     <ClCompile Include="ThirdParty\hde\hde32.c" />
     <ClCompile Include="ThirdParty\hde\hde64.c" />
+    <ClCompile Include="ThirdParty\MinHook\buffer.c" />
+    <ClCompile Include="ThirdParty\MinHook\hook.c" />
+    <ClCompile Include="ThirdParty\MinHook\trampoline.c" />
     <ClCompile Include="WindowsRebuild.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -175,6 +180,9 @@
     <ClInclude Include="ThirdParty\hde\pstdint.h" />
     <ClInclude Include="ThirdParty\hde\table32.h" />
     <ClInclude Include="ThirdParty\hde\table64.h" />
+    <ClInclude Include="ThirdParty\MinHook\buffer.h" />
+    <ClInclude Include="ThirdParty\MinHook\MinHook.h" />
+    <ClInclude Include="ThirdParty\MinHook\trampoline.h" />
     <ClInclude Include="WindowsRebuild.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
