@@ -59,6 +59,15 @@ Tools For Scanning Process Memory For A Certain Pattern In "XX XX ? XX XX ? ? ? 
             -   Scans Current Thread Stack for a Pattern
             -   (Top -> Bottom Scan) 
             
+     BuildSignaturex86(pStrObject, data, len)
+            -   Creates a Code Pattern for a specified memory Region
+            
+     CreateVTableSigsx86(pClass, nVtablesCount, pStrArray)
+            -   Creates a Code Pattern for each function in a classes vtable
+            
+      
+    
+            
   MemoryToolsEx::
   
      PatternScanMemoryRegionEx(hProcess, pBaseAddress, nRegionSize, pszPattern)
@@ -80,7 +89,10 @@ Tools For Byte Patching Executable Code In A Process
             -  Place a Relative Call at pWriteAddress to pJumpAddress (0xE8 rel/32 opcode)
             
      WriteNOPs(pWriteAddress, nDataSize)
-            -  Fill at the Write Address an nDataSize about of nop Opcodes (0x90)           
+            -  Fill at the Write Address an nDataSize about of nop Opcodes (0x90)
+            
+     GenerateIntermediaryFunctionx86(pTargetFunction)
+            -  Generates a jump function that points to another
 </pre>
 
 ## Memory Query Functions
@@ -117,7 +129,11 @@ Miscellaneous Functions
             
      GetCurrentTEB()
             -  Returns The TEB of the Current Thread
-
+            
+     FindFunctionPrologueFromReturnAddressx86(pRetAddr, nMaxSearchableBytes)
+            -  Attempts to find the begining of a function from an address
+            -  provided within the function body (usually a return address)
+     
 </pre>
 
 ## Helper Functions
@@ -131,6 +147,9 @@ Simple Helper Functions
      GetPatternReversed(szPattern)
             -  Reverses a Pattern (or any string)
             -  Return is allocate, call MTFree(ret) to free
+          
+     CalculateVmtLength(pVMT)
+            -  Calculates the length of a Virtual Method Table
             
      MTFree(ptr)
             - Frees Memory Allocated By MemoryTools
