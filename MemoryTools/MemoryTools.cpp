@@ -4,6 +4,7 @@
 #include "MemoryTools.h"
 #include <cstdlib>
 #include <string.h>
+#include <WinSock2.h>
 #include <Windows.h>
 #include <Psapi.h>
 #include <intsafe.h>
@@ -19,9 +20,15 @@
 #include <Zydis/Zydis.h>
 #include <Zycore/Zycore.h>
 #include <DbgHelp.h>
+#include <fstream>
 #include "ThirdParty/MinHook/MinHook.h"
 #include "ThirdParty/hde/hde32.h"
 #include "ThirdParty/hde/hde64.h"
+#include <ntstatus.h>
+#include <tlhelp32.h>
+#include <sstream>
+#include <iomanip>
+
 
 #ifdef THROWEXCEPTION
 #include <exception>
@@ -144,6 +151,8 @@ _Ret_maybenull_ void* MTCALL MemoryTools::PatternScanModuleHandle(_In_ void* hMo
 	if (GetModuleInformation(GetCurrentProcess(), (HMODULE)hModule, &modInfo, sizeof(MODULEINFO)))
 		return MemoryTools::PatternScanMemoryRegion((void*)modInfo.lpBaseOfDll, modInfo.SizeOfImage, pszPattern);
 	
+	__debugbreak();
+
 	return (void*)nullptr;
 }
 
@@ -158,7 +167,7 @@ _Ret_maybenull_ void* MTCALL MemoryTools::PatternScanModule(_In_z_ const char* p
 	return PatternScanModuleHandle(hModule, pszPattern);
 }
 
-_Ret_maybenull_ void* MTCALL MemoryTools::PatternScanCurrentProcess(_In_z_ const char* pszPattern)
+_Ret_maybenull_ void* MTCALL MemoryTools::PatternScanCurrentProcessModules(_In_z_ const char* pszPattern)
 {
 	HMODULE hMods[1024];
 	DWORD cbNeeded;
@@ -178,7 +187,101 @@ _Ret_maybenull_ void* MTCALL MemoryTools::PatternScanCurrentProcess(_In_z_ const
 	return (void*)nullptr;
 }
 
+void* MTCALL MemoryTools::PatternScanMemoryRegionReportPartial(void* pBaseAddress, size_t nRegionSize, const char* pszPattern, bool& bPartial)  {
+	const char* pat = pszPattern;
+	BYTE* firstMatch = 0;
+	BYTE* rangeStart = (BYTE*)pBaseAddress;
+	BYTE* rangeEnd = rangeStart + nRegionSize;
+	BYTE* pCur = rangeStart;
+	for (; pCur < rangeEnd; pCur++)
+	{
+		if (!*pat)
+			return firstMatch;
 
+		if (*(PBYTE)pat == '\?' || *(BYTE*)pCur == getByte(pat))
+		{
+			if (!firstMatch)
+				firstMatch = pCur;
+
+			if (!pat[2])
+				return firstMatch;
+
+			if (*(PWORD)pat == '\?\?' || *(PBYTE)pat != '\?')
+				pat += 3;
+
+			else
+				pat += 2;    //one ?
+		}
+		else
+		{
+			pat = pszPattern;
+			firstMatch = 0;
+		}
+	}
+
+	if (firstMatch && (pCur >= rangeEnd))
+		bPartial = true;
+
+	return firstMatch;
+};
+void _suspend_all_threads();
+void _resume_all_threads();
+_Ret_maybenull_ void* MTCALL MemoryTools::PatternScanCurrentProcess(_In_z_ const char* pszPattern, _In_ void* pStartVirtualAddress/* = 0*/)
+{
+	_suspend_all_threads();
+	unsigned int i = (unsigned int)pStartVirtualAddress;
+	for (; i < 0x7FFF0000; )
+	{
+		MEMORY_BASIC_INFORMATION meminfo;
+		if (!VirtualQuery((LPCVOID)i, &meminfo, sizeof(meminfo)))
+			i += 1;
+
+		if (!meminfo.Protect || meminfo.Protect & PAGE_NOACCESS || meminfo.Protect & PAGE_GUARD || meminfo.Protect == 0xffff0001)
+		{
+			i += meminfo.RegionSize;
+			continue;
+		}
+
+		bool bWasPartial = false;
+		void* pAddress = PatternScanMemoryRegionReportPartial((void*)meminfo.BaseAddress, (size_t)meminfo.RegionSize, pszPattern, bWasPartial);
+
+
+		if (!bWasPartial && pAddress)
+		{
+			_resume_all_threads();
+			return pAddress;
+		}
+
+		i += meminfo.RegionSize;
+
+		if (bWasPartial)
+		{
+			continue; // todo : finish
+			char* buffer = (char*)_alloca(strlen(pszPattern)); // good enough
+			size_t nOffset = ((char*)meminfo.BaseAddress + meminfo.RegionSize) - (char*)pAddress;
+			memcpy(buffer, pAddress, nOffset);
+			memset(&meminfo, 0, sizeof(MEMORY_BASIC_INFORMATION));
+			if (!VirtualQuery((LPCVOID)i, &meminfo, sizeof(meminfo)))
+				continue;
+
+			if (!meminfo.Protect || meminfo.Protect & PAGE_NOACCESS || meminfo.Protect & PAGE_GUARD)
+			{
+				i += meminfo.RegionSize;
+				continue;
+			}
+
+			memcpy(buffer + nOffset, meminfo.BaseAddress, strlen(pszPattern) - nOffset);
+
+			if (PatternScanMemoryRegion(buffer, strlen(pszPattern), pszPattern))
+			{
+				_resume_all_threads();
+				return pAddress;
+			}
+		}
+	}
+	_resume_all_threads();
+	return (void*)nullptr;
+}
 _Ret_maybenull_ void* MTCALL MemoryTools::PatternScanHeap(_In_/*PROCESS_HEAP_ENTRY*/ void* pHeapEntry, _In_z_ const char* pszPattern)
 {
 	MEMORY_BASIC_INFORMATION MemInfo;
@@ -200,6 +303,31 @@ _Ret_maybenull_ void* MTCALL MemoryTools::PatternScanHeap(_In_/*PROCESS_HEAP_ENT
 	VirtualProtect((void*)pEntry->lpData, pEntry->cbData, dwOldProtect, &dwOldProtect);
 
 	return pRet;
+}
+
+
+bool MTCALL MemoryTools::IsValidPEHeaderx86(void* pAddr)
+{
+	IMAGE_DOS_HEADER* pDOS = nullptr;
+	IMAGE_FILE_HEADER* pFile = nullptr;
+	IMAGE_OPTIONAL_HEADER* pOpt = nullptr;
+	IMAGE_NT_HEADERS* pNT = nullptr;
+
+	pDOS = reinterpret_cast<PIMAGE_DOS_HEADER>(pAddr);
+
+	if (pDOS->e_magic != 0x5A4D) // MZ !?
+		return false;
+
+	pNT = reinterpret_cast<PIMAGE_NT_HEADERS>(pDOS->e_lfanew + (char*)pAddr);
+	pOpt = &pNT->OptionalHeader;
+	pFile = &pNT->FileHeader;
+
+
+
+	if (!IsMemoryRangeReadable(pOpt + offsetof(IMAGE_OPTIONAL_HEADER, Magic), 4) || pOpt->Magic != IMAGE_NT_OPTIONAL_HDR32_MAGIC)
+		return false;
+
+	return true;
 }
 
 
@@ -390,8 +518,8 @@ bool MTCALL MemoryTools::IsMemoryRangeReadable(_In_ void* ptr, _In_ size_t nData
 
 _Ret_maybenull_ void* MTCALL MemoryTools::RelativeToAbsolute(_In_reads_(sizeof(void*)) void** ptr)
 {
-	if (!MemoryTools::IsMemoryRangeReadable(ptr, sizeof(void*)))
-		return nullptr;
+	//if (!MemoryTools::IsMemoryRangeReadable(ptr, sizeof(void*)))
+	//	return nullptr;
 
 	// Yes the casts are ugly
 	return (void*)((int)((char*)ptr + sizeof(void*)) + *(char**)ptr);
@@ -669,7 +797,7 @@ _Success_(return != false) bool MTCALL MemoryTools::HookFunctionx86(_In_ void* p
 	{
 		auto ret = MH_Initialize();
 
-		if (ret != MH_OK || ret != MH_ERROR_ALREADY_INITIALIZED)
+		if (ret != MH_OK && ret != MH_ERROR_ALREADY_INITIALIZED)
 			return false;
 
 		bInitialized = true;
@@ -781,8 +909,7 @@ _Ret_maybenull_ void* MTCALL MemoryTools::FindFunctionPrologueFromReturnAddressx
 	return pAddr;
 }
 
-#include <sstream>
-#include <iomanip>
+
 
 size_t MTCALL MemoryTools::CalculateVmtLength(_In_ void* vmt)
 {
@@ -961,9 +1088,9 @@ void MTCALL MemoryTools::DisassembleMemoryRegionx86(
 		// Format & print the binary instruction structure to human readable format
 		char buffer[256];
 		ZydisFormatterFormatInstruction(&formatter, &instruction,
-			 buffer, sizeof(buffer), runtime_address);
+			 buffer, sizeof(buffer), (ZyanU64)((char*)pMemory + offset));
 		//puts(buffer);
-
+		// todo follow call and get symbol / signature
 
 		// TODO : Clean This Up!!!
 		std::string bytes;
@@ -971,7 +1098,7 @@ void MTCALL MemoryTools::DisassembleMemoryRegionx86(
 		int i = 0;
 		for (;i < instruction.length; i++)
 		{
-			unsigned char byte = ((unsigned char*)runtime_address)[i];
+			unsigned char byte = ((unsigned char*)(ZyanU64)((char*)pMemory + offset))[i];
 
 			bytes.append(uchar2hex(byte));
 			bytes.append(" ");
@@ -986,13 +1113,44 @@ void MTCALL MemoryTools::DisassembleMemoryRegionx86(
 			str->append(" ");
 
 		char addrbuffer[10] = { 0 };
-		snprintf(addrbuffer, sizeof(buffer), "%p", runtime_address);
+		snprintf(addrbuffer, sizeof(addrbuffer), "%p", (ZyanU64)((char*)pMemory + offset));
 
 		str->append(addrbuffer);
 		str->append(" ");
 		str->append(bytes);
 		str->append(" ");
 		str->append(buffer);
+
+		if (*(unsigned char*)((char*)pMemory + offset) == 0xe8)
+		{
+			auto pFunc = RelativeToAbsolute((void**)((char*)pMemory + offset + 1));
+
+
+			if (pFunc)
+			{
+				
+				std::string func_name;
+				GetFunctionSymbolName(&func_name, pFunc);
+				if (!strstr(func_name.c_str(), "#no_symbol#"))
+				{
+					str->append("    | (");
+					str->append(func_name);
+					str->append(")");
+				}
+				else
+				{
+					std::string module_name;
+					GetAddressModuleName(pFunc, &module_name);
+					str->append("    | (");
+					str->append(func_name);
+					str->append(")");
+					str->append(" @ ");
+					str->append(module_name);			
+				}
+			}
+
+		}
+
 
 		offset += instruction.length;
 		runtime_address += instruction.length;
@@ -1077,6 +1235,7 @@ void MTCALL MemoryTools::GetDebugCallStackString(void* pStr, bool bFindFunctionP
 		GetAddressModuleName(callstack[i], &module_name);
 		GetFunctionSymbolName(&func_name, callstack[i]);
 		GetModuleBounds(callstack[i], pModuleStart, pModuleEnd);
+
 		snprintf(buffer, sizeof(buffer), "- Call %d : 0x%p (%s @ %s (0x%p -> 0x%p))\n   Sig : (%s)\n\n   Possible Params:\n%s\n   Ret Addr Disasm:\n  %s\n \n\n",
 			i,
 			callstack[i],
@@ -1136,6 +1295,237 @@ void MTCALL MemoryTools::GetFunctionSymbolName(_In_ void* pString, void* pAddr)
 	*((std::string*)(pString)) = std::string(name);
 }
 
+void MTCALL MemoryTools::DumpModuleFromPEHeaderStartx86(void* pModule, const char* szModuleName)
+{
+	// TODO : Add Checks To See If Valid
+	IMAGE_DOS_HEADER* pDOS = reinterpret_cast<IMAGE_DOS_HEADER*>(pModule);
+	IMAGE_NT_HEADERS* pNt = reinterpret_cast<IMAGE_NT_HEADERS*>((char*)pModule + pDOS->e_lfanew);
+	IMAGE_OPTIONAL_HEADER* pOpt = &(pNt->OptionalHeader);
+	std::ofstream out_file(szModuleName, std::ios::out | std::ios::binary);
+	out_file.write((const char*)pModule, pNt->OptionalHeader.SizeOfImage);
+	out_file.close();
+}
+
+bool MTCALL MemoryTools::DumpModuleFromModuleHandlex86(unsigned int hModuleHandle, const char* szModuleName)
+{
+	MODULEINFO modInfo;
+	if (K32GetModuleInformation(GetCurrentProcess(), (HMODULE)hModuleHandle, &modInfo, sizeof(modInfo)))
+	{
+		std::ofstream out_file(szModuleName, std::ios::out | std::ios::binary);
+		out_file.write((const char*)modInfo.lpBaseOfDll,modInfo.SizeOfImage);
+		out_file.close();
+		return true;
+	}
+
+	return false;
+}
+
+void MTCALL MemoryTools::DumpAllLoadedModulesx86(const char* szPath)
+{
+	HMODULE hMods[1024];
+	HANDLE hProcess;
+	DWORD cbNeeded;
+	int i = 0;
+	hProcess = GetCurrentProcess();
+	if (K32EnumProcessModules(hProcess, hMods, sizeof(hMods), &cbNeeded))
+	{
+		for (i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
+		{
+			char buf[MAX_PATH];
+			if (!GetModuleBaseNameA(GetCurrentProcess(), hMods[i], buf, ARRAYSIZE(buf)))
+				return;
+			std::string path_str(szPath);
+			path_str.append(buf);
+			DumpModuleFromModuleHandlex86((unsigned int)hMods[i], path_str.c_str());
+		}
+	}
+}
+
+#define ThreadQuerySetWin32StartAddress 9
+void* MTCALL MemoryTools::GetThreadStartAddressx86(unsigned int hThread)
+{
+	NTSTATUS ntStatus;
+	HANDLE hDupHandle;
+	DWORD dwStartAddress;
+
+
+	HANDLE hCurrentProcess = GetCurrentProcess();
+	if (!DuplicateHandle(hCurrentProcess, (HANDLE)hThread, hCurrentProcess, &hDupHandle, THREAD_QUERY_INFORMATION, FALSE, 0)) {
+		SetLastError(ERROR_ACCESS_DENIED);
+
+		return 0;
+	}
+	
+	ntStatus = NtQueryInformationThread(hDupHandle, (THREADINFOCLASS)ThreadQuerySetWin32StartAddress, &dwStartAddress, sizeof(DWORD), NULL);
+	CloseHandle(hDupHandle);
+
+	if (ntStatus != STATUS_SUCCESS)
+		return 0;
+
+	return (void*)dwStartAddress;
+}
+
+bool MTCALL MemoryTools::IsAddressWithinLoadModule(void* pAddress)
+{
+	HMODULE hMods[1024];
+	HANDLE hProcess;
+	DWORD cbNeeded;
+	int i = 0;
+	hProcess = GetCurrentProcess();
+	if (K32EnumProcessModules(hProcess, hMods, sizeof(hMods), &cbNeeded))
+	{
+		for (i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
+		{
+			MODULEINFO modInfo;
+			if (!K32GetModuleInformation(hProcess, hMods[i], &modInfo, sizeof(modInfo)))
+				continue;
+
+			if (modInfo.lpBaseOfDll <= pAddress && pAddress <= ((char*)modInfo.lpBaseOfDll + modInfo.SizeOfImage))
+				return true;
+
+		}
+	}
+
+	return false;
+}
+
+
+void _suspend_all_threads()
+{
+	HANDLE h = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+	if (h != INVALID_HANDLE_VALUE) {
+		THREADENTRY32 te;
+		te.dwSize = sizeof(te);
+		if (Thread32First(h, &te)) {
+			do {
+				if (te.dwSize >= FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) +
+					sizeof(te.th32OwnerProcessID)) {
+
+					if (te.th32ThreadID == GetCurrentThreadId() || te.th32OwnerProcessID != GetCurrentProcessId())
+						continue;
+
+					HANDLE thread = ::OpenThread(THREAD_ALL_ACCESS, FALSE, te.th32ThreadID);
+
+					if (thread == GetCurrentThread())
+						continue;
+
+					SuspendThread(thread);
+
+				}
+				te.dwSize = sizeof(te);
+			} while (Thread32Next(h, &te));
+		}
+		CloseHandle(h);
+	}
+
+}
+
+void _resume_all_threads()
+{
+	HANDLE h = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+	if (h != INVALID_HANDLE_VALUE) {
+		THREADENTRY32 te;
+		te.dwSize = sizeof(te);
+		if (Thread32First(h, &te)) {
+			do {
+				if (te.dwSize >= FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) +
+					sizeof(te.th32OwnerProcessID)) {
+
+					if (te.th32ThreadID == GetCurrentThreadId() || te.th32OwnerProcessID != GetCurrentProcessId())
+					    continue;
+
+					HANDLE thread = ::OpenThread(THREAD_ALL_ACCESS, FALSE, te.th32ThreadID);
+
+					ResumeThread(thread);
+
+				}
+				te.dwSize = sizeof(te);
+			} while (Thread32Next(h, &te));
+		}
+		CloseHandle(h);
+	}
+}
+
+bool MTCALL MemoryTools::SearchForNonStandardMappedDLLsx86()
+{
+	// First Lets Go Through All Threads And See If We Can Find Weird eip Addresses
+	HANDLE hProcess = GetCurrentProcess();
+	DWORD dwProcessID = GetProcessId(hProcess);
+	std::vector<THREADENTRY32> current_process_threads;
+	std::vector<void*> suspicious_start_addresses;
+
+	HANDLE h = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+	if (h != INVALID_HANDLE_VALUE) {
+		THREADENTRY32 te;
+		te.dwSize = sizeof(te);
+		if (Thread32First(h, &te)) {
+			do {
+				if (te.dwSize >= FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) +
+					sizeof(te.th32OwnerProcessID)) {
+
+					if (te.th32OwnerProcessID != dwProcessID)
+						continue;
+
+					current_process_threads.push_back(te);
+				}
+				te.dwSize = sizeof(te);
+			} while (Thread32Next(h, &te));
+		}
+		
+	}
+	
+	// Search For Start Addresses That Are Not Within Current Modules
+	for (const auto thread : current_process_threads)
+	{
+		HANDLE hThreadHandle = OpenThread(THREAD_ALL_ACCESS, FALSE, thread.th32ThreadID);
+
+		if (hThreadHandle == NULL && IsDebuggerPresent())
+			__debugbreak();
+
+		void* pStartAddress = GetThreadStartAddressx86((unsigned int)hThreadHandle);
+
+		CloseHandle(hThreadHandle);
+
+		if (IsAddressWithinLoadModule(pStartAddress))
+			continue;
+
+		suspicious_start_addresses.push_back(pStartAddress);
+	}
+
+
+	//return !suspicious_start_addresses.empty();
+
+
+	// Now Lets Go Through Literally Every Bit Of Memory
+	
+	// Freeze All Threads Right Now!!!
+	_suspend_all_threads();
+
+	std::vector<MEMORY_BASIC_INFORMATION> process_memory_map_executable;
+	unsigned int i = 0;
+	for (; i < 0x7FFF0000; )
+	{
+		MEMORY_BASIC_INFORMATION meminfo;
+		if (!VirtualQuery((LPCVOID)i, &meminfo, sizeof(meminfo)))
+			i += 1;
+
+		i += meminfo.RegionSize;
+		
+
+		if (meminfo.Protect & PAGE_EXECUTE || meminfo.Protect & PAGE_EXECUTE_READ || meminfo.Protect & PAGE_EXECUTE_READWRITE)
+		{
+			if(!IsAddressWithinLoadModule(meminfo.BaseAddress))
+				process_memory_map_executable.push_back(meminfo);
+		}
+	
+	}
+
+	_resume_all_threads();
+	return !suspicious_start_addresses.empty() || !process_memory_map_executable.empty();
+}
+
+
+
 void MTCALL MemoryTools::GetModuleBounds(_In_ void* pAddr, _Outptr_ void*& nMinAddr, _Outptr_ void*& nMaxAddr)
 {
 	HMODULE hHandle;
@@ -1172,6 +1562,22 @@ __declspec(naked) void WINAPI CaptureContext_X86ControlOnly(CONTEXT* context) {
 		jmp  eax
 	}
 } //I'm writing from my memory - so step through the code above to double check.
+
+bool IsCallOpCode(unsigned char cOpCode)
+{
+	switch ((int)cOpCode)
+	{
+	case 0xFF:
+	case 0xE8:
+	case 0xE9: // not a call but whatever
+	case 0x9A:
+		return true;
+		break;
+	default:
+		return false;
+		break;
+	}
+}
 
 unsigned int MTCALL MemoryTools::GetCallStackx86(
 	_In_ char** pArray,
@@ -1217,7 +1623,7 @@ unsigned int MTCALL MemoryTools::GetCallStackx86(
 	unsigned int nFrameCount = 0;
 	for (; nFrameCount < nNumFuncsToFetch; nFrameCount++)
 	{
-		HRESULT hRes = StackWalk
+		BOOL bRes = StackWalk
 		(
 			IMAGE_FILE_MACHINE_I386,
 			hProcess,
@@ -1230,22 +1636,49 @@ unsigned int MTCALL MemoryTools::GetCallStackx86(
 			NULL
 		);
 
+		if (!bRes || !sfFrame.AddrReturn.Offset || !sfFrame.AddrPC.Offset)
+			break;
 
 		char* pFoundAddr = bGetReturnAddressInstead ? (char*)sfFrame.AddrReturn.Offset : (char*)sfFrame.AddrPC.Offset;
 		if (bAttemptPrologueFind)
 		{
 			char* pPrologue = (char*)FindFunctionPrologueFromReturnAddressx86(pFoundAddr, 100, true);
 			pFoundAddr = pPrologue != nullptr ? pPrologue : pFoundAddr;
+
+			if (pPrologue == nullptr && bGetReturnAddressInstead)
+			{
+				pFoundAddr -= 5;
+				unsigned char byte = *pFoundAddr;
+				if (!IsCallOpCode(byte)) {
+					for (int i = 0; i < 5; i++) {
+						pFoundAddr++;
+						if (IsCallOpCode(*pFoundAddr))
+							break;
+					}
+				}
+			}
+
+
+		}
+		else if (bGetReturnAddressInstead)
+		{
+			pFoundAddr -= 5;
+			unsigned char byte = *pFoundAddr;
+			if (!IsCallOpCode(byte))
+			{
+				for (int i = 0; i < 5; i++)
+				{
+					pFoundAddr++;
+					if (IsCallOpCode(*pFoundAddr))
+						break;
+				}
+			}
 		}
 
 		pArray[nFrameCount] = pFoundAddr;
 
 		if (pParams)
 			memcpy(pParams[nFrameCount], sfFrame.Params, sizeof(sfFrame.Params));
-
-
-		if (!hRes)
-			break;	
 	}
 
 	return --nFrameCount;
@@ -1418,5 +1851,34 @@ EXCEPTION_DISPOSITION __cdecl MemToolsExceptionHandler(
 	}
 }
 
+// todo finish
+namespace WinSocksIntercept
+{
+	decltype(&send) osend = nullptr;
+	decltype(&send) send_callback = nullptr;
+	decltype(&recv) orecv = nullptr;
+	decltype(&recv) recv_callback = nullptr;
+	int WSAAPI send(
+			_In_ SOCKET s,
+			_In_reads_bytes_(len) const char FAR* buf,
+			_In_ int len,
+			_In_ int flags
+		
+	){
 
 
+
+		return osend(s, buf, len, flags);
+	}
+
+	int WSAAPI recv(
+		_In_ SOCKET s,
+		_Out_writes_bytes_to_(len, return) __out_data_source(NETWORK) char FAR* buf,
+		_In_ int len,
+		_In_ int flags
+	){
+
+		return orecv(s, buf, len, flags);
+	}
+
+}

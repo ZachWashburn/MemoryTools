@@ -1,7 +1,0 @@
-﻿  MemoryTools.cpp
-C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.cpp(379,51): warning C4311: 'type cast': pointer truncation from 'char *' to 'int'
-C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.cpp(379,51): warning C4302: 'type cast': truncation from 'char *' to 'int'
-C:\Users\user\source\repos\MemoryTools\MemoryTools\MemoryTools.cpp(436,19): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-  MemoryToolsEx.cpp
-  Generating Code...
-  MemoryTools.vcxproj -> C:\Users\user\source\repos\MemoryTools\x64\Debug\MemoryTools.lib

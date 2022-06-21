@@ -50,6 +50,12 @@ namespace MemoryTools
 			_In_z_ const char* pszPattern
 		);
 
+		DLLEXPORT void* MTCALL PatternScanMemoryRegionReportPartial(
+			void* pBaseAddress,
+			size_t nRegionSize,
+			const char* pszPattern,
+			bool& bPartial
+		);
 
 		/// <c>PatternScanMemoryRegionReverse</c> 
 		/// <summary> Find a Pattern within pBaseAddress to pBaseAddress + nRegionSize going in reverse order.</summary>
@@ -88,13 +94,25 @@ namespace MemoryTools
 			_In_z_ const char* pszPattern
 		);
 
-		/// <c> PatternScanCurrentProcess </c> 
+		/// <c> PatternScanCurrentProcessModules </c> 
 		/// <summary> Scans All Process Modules For a Pattern </summary>
 		/// <param name="pszPattern"> The String To Scan For in  XX XX ? XX XX  format </param>
 		/// <returns> <strong> Address Pattern Found At Or NULL (no match) </strong> </returns>
+		_Ret_maybenull_ void* MTCALL PatternScanCurrentProcessModules(
+			_In_z_ const char* pszPattern
+		);
+
+
+
+		/// <c> PatternScanCurrentProcess </c> 
+		/// <summary> Scans All Process Memory Pages For A Pattern </summary>
+		/// <param name="pszPattern"> The String To Scan For in  XX XX ? XX XX  format </param>
+		/// <param name="pStartVirtualAddress"> Virtual Address To Start At </param>
+		/// <returns> <strong> Address Pattern Found At Or NULL (no match) </strong> </returns>
 		DLLEXPORT _Ret_maybenull_ void* MTCALL PatternScanCurrentProcess
 		(
-			_In_z_ const char* pszPattern
+			_In_z_ const char* pszPattern,
+			_In_ void* pStartVirtualAddress = 0
 		);
 
 
@@ -419,6 +437,13 @@ namespace MemoryTools
 			_Outptr_ void** ppOriginal
 		);
 
+		void MTCALL DumpModuleFromPEHeaderStartx86(void* pModule, const char* szModuleName);
+		bool MTCALL DumpModuleFromModuleHandlex86(unsigned int hModuleHandle, const char* szModuleName);
+		void MTCALL DumpAllLoadedModulesx86(const char* szPath);
+		bool MTCALL SearchForNonStandardMappedDLLsx86();
+		void* MTCALL GetThreadStartAddressx86(unsigned int hThread);
+		bool MTCALL IsValidPEHeaderx86(void* pAddr);
+		bool MTCALL IsAddressWithinLoadModule(void* pAddress);
 	EXTERNCCLOSE
 
 
