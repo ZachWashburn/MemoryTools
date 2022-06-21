@@ -181,52 +181,52 @@ Simple Helper Functions
     InstructionSizex86(pAddress)
             - Get the size of an instruction at address pAddress
             
-     GetCallStackx86(pArray, nNumFuncsToFetch, bGetReturnAddressInstead, bAttemptPrologueFind, pParams, hThreadHandle)
+    GetCallStackx86(pArray, nNumFuncsToFetch, bGetReturnAddressInstead, bAttemptPrologueFind, pParams, hThreadHandle)
             - Return the current callstack, up to nNumFuncsToFetch. 
             - Can Attempt to find the start of a function (func prolouge),
             - or simply get the address of return
             
-      GetVTableFuncAddress(class_definition, nVtableOffset)
+    GetVTableFuncAddress(class_definition, nVtableOffset)
             - Get The Address of a vtable function at nVtableOffset of class type pointed to by class_definition
             
-      GetAddressModuleName(pAddress, pString)
+    GetAddressModuleName(pAddress, pString)
             - Return the name of the loaded module pAddress resides in
             - Returns in a std::string object pointed to by pString
             
        
-      GetModuleBounds(pAddr, nMinAddr, nMaxAddr)
+    GetModuleBounds(pAddr, nMinAddr, nMaxAddr)
             - Fetch the starting and ending address of the module that pAddr 
             - is within. nMinAddr and nMaxAddr are reference cast integers
             
-      GetFunctionSymbolName(pString, pAddr)
+    GetFunctionSymbolName(pString, pAddr)
             - Fetch the functions symbol name that pAddr resides in,
             - returns in an std::string object pointed to by pString.
             
-      GetDebugCallStackString(pStr, bFindFunctionProlouge, nCallStackMax, hThread)
+    GetDebugCallStackString(pStr, bFindFunctionProlouge, nCallStackMax, hThread)
             - Generate a large debug string about all functions currently in the callstack
             - includes patterns, disassembly, symbol and module names. 
             
-      DumpModuleFromPEHeaderStartx86(pModule, szModuleName)
+    DumpModuleFromPEHeaderStartx86(pModule, szModuleName)
             - Dump a module by PE header pointed to by pModule, writes a file named szModuleName to disk
             
-      DumpModuleFromModuleHandlex86(hModuleHandle, szModuleName)
+    DumpModuleFromModuleHandlex86(hModuleHandle, szModuleName)
             - Dump a module referenced by hModuleHandle, writes a file named szModuleName to disk
             
-      DumpAllLoadedModulesx86(szPath)
+    DumpAllLoadedModulesx86(szPath)
             - Dump All Windows Loader-Loaded modules within a process to location
             - specified by szPath
             
-      SearchForNonStandardMappedDLLsx86()
+    SearchForNonStandardMappedDLLsx86()
             - Attempts to scan for modules not loaded by the windows loader (manually mapped)
             - Returns true on finding
             
-       GetThreadStartAddressx86(hThread)
+     GetThreadStartAddressx86(hThread)
             - Get The Start Address Of The Thread Referenced by hThread
             
-       IsValidPEHeaderx86(pAddr)
+     IsValidPEHeaderx86(pAddr)
             - Checks a PE header at pAddr, verifies validity
             
-       IsAddressWithinLoadModule(pAddress)
+     IsAddressWithinLoadModule(pAddress)
             - Checks a address to verify if it resides within a module loaded by
             - the windows loader. 
          
