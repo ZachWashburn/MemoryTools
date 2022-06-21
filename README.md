@@ -220,13 +220,13 @@ Simple Helper Functions
             - Attempts to scan for modules not loaded by the windows loader (manually mapped)
             - Returns true on finding
             
-     GetThreadStartAddressx86(hThread)
+    GetThreadStartAddressx86(hThread)
             - Get The Start Address Of The Thread Referenced by hThread
             
-     IsValidPEHeaderx86(pAddr)
+    IsValidPEHeaderx86(pAddr)
             - Checks a PE header at pAddr, verifies validity
             
-     IsAddressWithinLoadModule(pAddress)
+    IsAddressWithinLoadModule(pAddress)
             - Checks a address to verify if it resides within a module loaded by
             - the windows loader. 
          
